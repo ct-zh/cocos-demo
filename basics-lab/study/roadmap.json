@@ -1,5 +1,5 @@
 {
-  "active_module": "project.basics-lab.state-to-label",
+  "active_module": "project.basics-lab.score-parameters-conditions",
   "modules": {
     "project.basics-lab.component-entry": {
       "order": 1,
@@ -14,7 +14,7 @@
     },
     "project.basics-lab.state-to-label": {
       "order": 2,
-      "status": "active",
+      "status": "planned",
       "title": "组件状态与 Label 显示",
       "objectives": [
         "用带类型的字段保存一个数值状态",
@@ -24,9 +24,35 @@
       "prerequisites": [
         "project.basics-lab.component-entry"
       ]
+    },
+    "project.basics-lab.button-score": {
+      "order": 3,
+      "status": "planned",
+      "title": "按钮点击与状态更新",
+      "objectives": [
+        "创建并绑定一个 Cocos Button",
+        "为 Button 的 CLICK 事件注册组件方法",
+        "每次点击更新 score 并刷新 Label"
+      ],
+      "prerequisites": [
+        "project.basics-lab.state-to-label"
+      ]
+    },
+    "project.basics-lab.score-parameters-conditions": {
+      "order": 4,
+      "status": "active",
+      "title": "方法参数与得分下限",
+      "objectives": [
+        "创建并绑定第二个 Button",
+        "用 number 参数让一个方法处理加分和减分",
+        "用条件判断保证 score 不小于 0"
+      ],
+      "prerequisites": [
+        "project.basics-lab.button-score"
+      ]
     }
   },
   "schema_version": 1,
   "scope": "project",
-  "updated_at": "2026-08-11T09:05:00Z"
+  "updated_at": "2026-08-11T10:56:00Z"
 }
