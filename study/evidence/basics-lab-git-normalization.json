@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "performed_at": "2026-08-11T09:32:45Z",
+  "authorization": "user_confirmed_workspace_ownership",
+  "source_boundary": "basics-lab/.git",
+  "backup_path": "/Volumes/Galaxy1T/Project/vibe_coding/.cocos-demo-git-backups/20260811T093245Z/basics-lab.git",
+  "preflight": {
+    "classification": "empty_repository_no_remote",
+    "commit_count": 0,
+    "remote_count": 0,
+    "is_submodule": false,
+    "marker_kind": "directory",
+    "worktree_dirty": true,
+    "backup_size": "76K"
+  },
+  "action": {
+    "nested_boundary": "moved_to_backup",
+    "outer_repository_action": "unchanged",
+    "files_staged": false,
+    "commit_created": false
+  },
+  "postflight": {
+    "workspace_repository": true,
+    "git_boundary_count": 1,
+    "nested_demo_boundary_present": false
+  },
+  "restore": {
+    "warning": "Restore only after deciding how it will coexist with the outer workspace repository.",
+    "source": "/Volumes/Galaxy1T/Project/vibe_coding/.cocos-demo-git-backups/20260811T093245Z/basics-lab.git",
+    "destination": "basics-lab/.git"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "performed_at": "2026-07-31T09:58:27Z",
+  "authorization": "user_confirmed_checkpoint_5",
+  "source_boundary": "demo/.git",
+  "backup_path": "/Volumes/Galaxy1T/Project/vibe_coding/.cocos-demo-git-backups/20260731T095726Z/demo.git",
+  "preflight": {
+    "classification": "empty_repository_no_remote",
+    "commit_count": 0,
+    "remote_count": 0,
+    "is_submodule": false,
+    "marker_kind": "directory",
+    "backup_size": "76K"
+  },
+  "action": {
+    "nested_boundary": "moved_to_backup",
+    "outer_repository": "initialized",
+    "outer_branch": "main",
+    "files_staged": false,
+    "commit_created": false
+  },
+  "postflight": {
+    "workspace_repository": true,
+    "git_boundary_count": 1,
+    "nested_demo_boundary_present": false,
+    "generated_directories_ignored": true
+  },
+  "restore": {
+    "warning": "Only restore the nested repository after deciding what to do with the outer workspace repository.",
+    "source": "/Volumes/Galaxy1T/Project/vibe_coding/.cocos-demo-git-backups/20260731T095726Z/demo.git",
+    "destination": "demo/.git"
+  }
+}

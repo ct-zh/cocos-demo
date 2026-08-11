@@ -1,0 +1,23 @@
+{
+  "pending_creations": [],
+  "projects": {
+    "basics-lab": {
+      "creator_version": "3.8.8",
+      "name": "basics-lab",
+      "path": "basics-lab",
+      "study_status": "initialized",
+      "updated_at": "2026-07-31T10:21:12Z"
+    },
+    "demo": {
+      "creator_version": "3.8.8",
+      "last_inspected_at": "2026-07-31T09:58:50Z",
+      "name": "demo",
+      "path": "demo",
+      "runtime_validation_status": "not_verified",
+      "study_status": "structurally_inspected",
+      "updated_at": "2026-07-31T09:58:50Z"
+    }
+  },
+  "schema_version": 1,
+  "updated_at": "2026-07-31T10:21:12Z"
+}

@@ -1,0 +1,71 @@
+{
+  "active_module": null,
+  "modules": {
+    "project.demo.component-entry": {
+      "order": 1,
+      "status": "planned",
+      "title": "运行入口与组件绑定",
+      "objectives": [
+        "从 Game.scene 追踪到 PuzzleGame.start()",
+        "解释 Node、Component、ccclass 和 property 的职责",
+        "区分场景序列化属性与普通 TypeScript 字段"
+      ],
+      "prerequisites": []
+    },
+    "project.demo.runtime-ui": {
+      "order": 2,
+      "status": "planned",
+      "title": "静态场景与动态 UI",
+      "objectives": [
+        "区分编辑器节点树与运行时节点树",
+        "解释 UITransform、Canvas 和动态 addComponent",
+        "手动画出棋盘图块的节点层级"
+      ],
+      "prerequisites": [
+        "project.demo.component-entry"
+      ]
+    },
+    "project.demo.resource-slicing": {
+      "order": 3,
+      "status": "planned",
+      "title": "资源加载与 SpriteFrame 裁切",
+      "objectives": [
+        "解释 resources 加载路径和 SpriteFrame 子资源",
+        "追踪异步加载回调到棋盘初始化",
+        "理解整图到子 SpriteFrame 的坐标计算"
+      ],
+      "prerequisites": [
+        "project.demo.runtime-ui"
+      ]
+    },
+    "project.demo.event-state-flow": {
+      "order": 4,
+      "status": "planned",
+      "title": "事件与状态流",
+      "objectives": [
+        "追踪两次点击如何改变选中、步数和棋盘",
+        "解释 slot、pieceId、order 和 frames 的索引语义",
+        "说明胜利条件和输入锁定"
+      ],
+      "prerequisites": [
+        "project.demo.runtime-ui"
+      ]
+    },
+    "project.demo.logic-extraction": {
+      "order": 5,
+      "status": "planned",
+      "title": "纯逻辑抽离与测试",
+      "objectives": [
+        "将棋盘规则与 Cocos 显示逻辑解耦",
+        "由用户编写纯逻辑实现和测试",
+        "保持现有点击交换行为兼容"
+      ],
+      "prerequisites": [
+        "project.demo.event-state-flow"
+      ]
+    }
+  },
+  "schema_version": 1,
+  "scope": "project",
+  "updated_at": "2026-07-18T03:26:06Z"
+}

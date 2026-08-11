@@ -1,0 +1,32 @@
+{
+  "active_module": "project.basics-lab.state-to-label",
+  "modules": {
+    "project.basics-lab.component-entry": {
+      "order": 1,
+      "status": "planned",
+      "title": "第一个 Cocos 组件与启动日志",
+      "objectives": [
+        "创建 TypeScript 组件并挂载到 Canvas",
+        "解释 Node、Component 与 start() 的关系",
+        "通过控制台日志验证组件在预览时执行"
+      ],
+      "prerequisites": []
+    },
+    "project.basics-lab.state-to-label": {
+      "order": 2,
+      "status": "active",
+      "title": "组件状态与 Label 显示",
+      "objectives": [
+        "用带类型的字段保存一个数值状态",
+        "用 @property 将场景中的 Label 绑定到组件",
+        "在 start() 中将状态渲染为可见文字"
+      ],
+      "prerequisites": [
+        "project.basics-lab.component-entry"
+      ]
+    }
+  },
+  "schema_version": 1,
+  "scope": "project",
+  "updated_at": "2026-08-11T09:05:00Z"
+}

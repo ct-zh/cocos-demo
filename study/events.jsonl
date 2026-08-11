@@ -1,0 +1,3 @@
+{"data": {"background_count": 1, "root": "."}, "event_id": "76468e06-c60d-4698-a6ce-e807a77075b4", "schema_version": 1, "scope": "workspace", "timestamp": "2026-07-18T03:15:34Z", "type": "study_initialized"}
+{"data": {"path": "demo", "project_id": "demo", "runtime_validation_status": "not_verified"}, "event_id": "78c60534-cc59-4a01-852e-37e6d6f2bd11", "schema_version": 1, "scope": "workspace", "timestamp": "2026-07-18T03:28:24Z", "type": "project_structurally_inspected"}
+{"data": {"path": "demo", "project_id": "demo", "runtime_validation_status": "not_verified"}, "event_id": "c673a611-e78e-493a-94ea-1c0d86fcbf04", "schema_version": 1, "scope": "workspace", "timestamp": "2026-07-31T09:58:50Z", "type": "project_structurally_inspected"}

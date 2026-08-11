@@ -1,0 +1,28 @@
+{
+  "modules": {
+    "project.basics-lab.component-entry": {
+      "assessment_id": "component-entry-stage-01-v1",
+      "evidence": [
+        "evidence/component-entry-stage-01.md"
+      ],
+      "note": "Passed component creation, Canvas attachment, preview-log evidence, and lifecycle/component-registration explanation.",
+      "source": "learning_assessment",
+      "stage_gate": {
+        "status": "ready_for_next_stage",
+        "updated_at": "2026-08-11T09:33:57Z"
+      },
+      "status": "passed",
+      "updated_at": "2026-08-11T09:33:57Z"
+    },
+    "project.basics-lab.state-to-label": {
+      "evidence": [],
+      "note": "Awaiting Label binding, typed score state, and preview evidence.",
+      "source": "learning_assessment",
+      "status": "assigned",
+      "updated_at": "2026-08-11T09:04:15Z"
+    }
+  },
+  "schema_version": 1,
+  "scope": "project",
+  "updated_at": "2026-08-11T09:33:57Z"
+}

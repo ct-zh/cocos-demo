@@ -1,0 +1,29 @@
+{
+  "boundaries": [
+    {
+      "branch": "main",
+      "classification": "workspace_repository",
+      "cleanup_eligibility": "not_applicable",
+      "commit_count": 0,
+      "dirty": true,
+      "errors": [],
+      "is_submodule": false,
+      "marker_kind": "directory",
+      "path": ".",
+      "remotes": [],
+      "status_entry_count": 4,
+      "status_preview": [
+        "?? .agents/",
+        "?? .gitignore",
+        "?? demo/",
+        "?? study/"
+      ],
+      "superproject": null
+    }
+  ],
+  "boundary_count": 1,
+  "errors": [],
+  "ok": true,
+  "root": "/Volumes/Galaxy1T/Project/vibe_coding/cocos-demo",
+  "workspace_repository": true
+}

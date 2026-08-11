@@ -1,0 +1,19 @@
+.DS_Store
+**/.DS_Store
+
+# Cocos Creator generated directories
+**/library/
+**/temp/
+**/local/
+**/build/
+**/profiles/
+**/native/
+
+# Package and editor caches
+**/node_modules/
+**/.vscode/
+**/.idea/
+
+# Python caches created by Skill auditors
+**/__pycache__/
+**/*.py[cod]

@@ -1,0 +1,145 @@
+{
+  "asset_summary": {
+    "extension_counts": {
+      ".jpg": 1,
+      ".png": 2,
+      ".scene": 1,
+      ".ts": 1
+    },
+    "non_meta_count": 5,
+    "prefab_count": 0,
+    "resource_files": [
+      "puzzle_ai.jpg",
+      "puzzle_sample.png"
+    ],
+    "scene_count": 1,
+    "script_count": 1
+  },
+  "engine_settings": {
+    "included_modules": [
+      "2d",
+      "affine-transform",
+      "animation",
+      "audio",
+      "base",
+      "custom-pipeline",
+      "dragon-bones",
+      "gfx-webgl",
+      "gfx-webgl2",
+      "graphics",
+      "intersection-2d",
+      "mask",
+      "particle-2d",
+      "physics-2d-box2d",
+      "profiler",
+      "rich-text",
+      "spine-3.8",
+      "tiled-map",
+      "tween",
+      "ui",
+      "video",
+      "webview"
+    ],
+    "path": "settings/v2/packages/engine.json",
+    "readable": true
+  },
+  "errors": [],
+  "generated_directories_present": [
+    "library",
+    "profiles",
+    "temp"
+  ],
+  "git_boundary_present": false,
+  "manifest": {
+    "creator_version": "3.8.8",
+    "name": "demo",
+    "uuid": "c05d45b8-f363-45aa-872d-ae7dcb8ad232"
+  },
+  "ok": true,
+  "project": "/Volumes/Galaxy1T/Project/vibe_coding/cocos-demo/demo",
+  "project_study_initialized": true,
+  "scenes": [
+    {
+      "builtin_component_counts": {
+        "cc.Camera": 1,
+        "cc.Canvas": 1,
+        "cc.UITransform": 1,
+        "cc.Widget": 1
+      },
+      "custom_component_type_counts": {
+        "ffde46IQvZKdYkwSRyekMon": 1
+      },
+      "name": "Game",
+      "node_count": 2,
+      "nodes": [
+        {
+          "active": true,
+          "components": [
+            "cc.UITransform",
+            "cc.Canvas",
+            "cc.Widget",
+            "ffde46IQvZKdYkwSRyekMon"
+          ],
+          "name": "Canvas"
+        },
+        {
+          "active": true,
+          "components": [
+            "cc.Camera"
+          ],
+          "name": "Camera"
+        }
+      ],
+      "path": "assets/scenes/Game.scene",
+      "readable": true,
+      "resolved_custom_script_counts": {
+        "assets/scripts/PuzzleGame.ts": 1
+      }
+    }
+  ],
+  "scripts": [
+    {
+      "cc_imports": [
+        "Button",
+        "Color",
+        "Component",
+        "EventTouch",
+        "Graphics",
+        "Label",
+        "LabelOutline",
+        "Node",
+        "Rect",
+        "Size",
+        "Sprite",
+        "SpriteFrame",
+        "Texture2D",
+        "UITransform",
+        "Vec2",
+        "Vec3",
+        "_decorator",
+        "resources"
+      ],
+      "ccclasses": [
+        "PuzzleGame"
+      ],
+      "lifecycle_methods": [
+        "start"
+      ],
+      "line_count": 545,
+      "meta_uuid": "ffde4e88-42f6-4a75-8930-491c9e90ca27",
+      "path": "assets/scripts/PuzzleGame.ts",
+      "readable": true,
+      "serialized_type_id": "ffde46IQvZKdYkwSRyekMon"
+    }
+  ],
+  "startup_scene": {
+    "reason": "not proven by inspected stable project files",
+    "status": "unknown"
+  },
+  "structure": {
+    "assets": true,
+    "settings": true,
+    "tsconfig.json": true
+  },
+  "warnings": []
+}

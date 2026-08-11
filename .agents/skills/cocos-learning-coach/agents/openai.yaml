@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cocos Learning Coach"
+  short_description: "分阶段学习、考核并吃透多个 Cocos Demo 项目"
+  default_prompt: "Use $cocos-learning-coach to continue my staged Cocos learning in this workspace."

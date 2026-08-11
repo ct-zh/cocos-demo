@@ -1,0 +1,22 @@
+{
+  "backgrounds": [
+    {
+      "description": "Go backend development",
+      "source": "user_confirmed"
+    }
+  ],
+  "created_at": "2026-07-18T03:15:34Z",
+  "preferences": {
+    "assessment_question_count": {
+      "max": 3,
+      "min": 2
+    },
+    "core_code_owner": "learner",
+    "demo_creation": "ask_each_time",
+    "deterministic_audits": "prefer",
+    "interactive_questions": "prefer_when_available",
+    "stage_review": "required"
+  },
+  "schema_version": 1,
+  "updated_at": "2026-07-18T03:15:34Z"
+}
