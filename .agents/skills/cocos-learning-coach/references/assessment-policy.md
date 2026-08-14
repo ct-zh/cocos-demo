@@ -28,6 +28,8 @@ An assessment may be:
 - 2-3 focused questions for a conceptual module;
 - one editor task with serialized or visual evidence plus 1-2 questions.
 
+For an acceleration package, assess the integrated implementation rather than treating each micro-check as a completed module. Use micro-check results only to expose and repair an immediate gap before the learner proceeds.
+
 Require the user to explain at least one relevant runtime behavior for engine-specific modules. A passing implementation with a fundamentally incorrect explanation should trigger a targeted follow-up rather than automatic mastery.
 
 Pass only when all critical objectives are met. Record partial success by objective instead of rounding it into a pass. A pass opens a stage-end choice; it does not auto-advance the learner.

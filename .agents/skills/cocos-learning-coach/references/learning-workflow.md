@@ -4,9 +4,10 @@
 
 1. Session intake
 2. Module design
-3. Stage loop
-4. Project-understanding mode
-5. Review and retrospective
+3. Acceleration packages
+4. Stage loop
+5. Project-understanding mode
+6. Review and retrospective
 
 ## 1. Session intake
 
@@ -35,9 +36,26 @@ Each module must define:
 - completion evidence;
 - explicit out-of-scope topics.
 
+Before assignment, classify every required concept as either a verified prerequisite or a new concept. Do not phrase a new concept as an assumed ability merely because the learner requested a faster pace.
+
 Prefer a small focused lab for foundational concepts and an existing game for integration and archaeology. Do not use a complex game merely because it already contains the API being taught.
 
-## 3. Stage loop
+## 3. Acceleration packages
+
+When the learner requests higher volume, organize one learning session as an acceleration package rather than silently skipping prerequisite teaching. A package may contain several short micro-stages followed by one integrated implementation stage.
+
+For every package:
+
+1. State the requested pace and the package's total objectives.
+2. List `verified prerequisites` and `new concepts` separately.
+3. Give each new, critical concept a short explanation, minimal API example, or behavior-prediction micro-check before the integrated task depends on it.
+4. Order micro-stages by dependency. Use code, editor actions, or questions only as much as needed to confirm the learner can proceed.
+5. End with one user-owned integrated implementation and its deterministic checks.
+6. Run the normal assessment and stage-end gate only after the integrated implementation; a micro-check does not falsely mark a module completed.
+
+Increase volume through breadth, integration, reduced ceremony, and tighter feedback. Do not increase volume by assuming unintroduced engine APIs, lifecycle semantics, or TypeScript constructs are already known.
+
+## 4. Stage loop
 
 Run one stage at a time:
 
@@ -56,7 +74,7 @@ Run one stage at a time:
 
 Do not silently turn a learning request into an agent implementation task.
 
-## 4. Project-understanding mode
+## 5. Project-understanding mode
 
 Build a project map from source evidence before teaching:
 
@@ -74,7 +92,7 @@ Build a project map from source evidence before teaching:
 
 Turn the map into modules such as runtime entry, scene composition, input, state, rendering, resources, and build. Ask the user to predict behavior, trace a flow, or change a small isolated part rather than only reading explanations.
 
-## 5. Review and retrospective
+## 6. Review and retrospective
 
 Review correctness first, then engine behavior, testability, code quality, and style. Use progressive hints and wait for correction when the learning objective is still achievable.
 

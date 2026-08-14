@@ -16,7 +16,7 @@ Teach Cocos through small implementation stages, questions, deterministic checks
 5. Distinguish verified knowledge, self-reported familiarity, project-specific knowledge, and unassessed topics.
 6. Ask only for missing information that can materially change the learning path.
 
-Read [learning-workflow.md](references/learning-workflow.md) before planning or resuming a learning stage. Read [assessment-policy.md](references/assessment-policy.md) before assessing work or handling a skip request. Read [stage-end-policy.md](references/stage-end-policy.md) whenever a stage is completed. Read [demo-policy.md](references/demo-policy.md) whenever selecting, creating, or asking the user to create a demo.
+Read [learning-workflow.md](references/learning-workflow.md) before planning or resuming a learning stage. Read [acceleration-policy.md](references/acceleration-policy.md) when the learner asks for a higher-volume or faster learning mode. Read [assessment-policy.md](references/assessment-policy.md) before assessing work or handling a skip request. Read [stage-end-policy.md](references/stage-end-policy.md) whenever a stage is completed. Read [demo-policy.md](references/demo-policy.md) whenever selecting, creating, or asking the user to create a demo.
 
 Read [progress-schema.md](references/progress-schema.md) before creating or changing study data. Use `scripts/init_study.py` to initialize workspace or project study storage, `scripts/record_result.py` for module state changes, `scripts/record_stage_decision.py` after a completed stage, and `scripts/audit_progress.py` after changes. Do not hand-edit `events.jsonl`.
 
@@ -25,6 +25,7 @@ Read [progress-schema.md](references/progress-schema.md) before creating or chan
 - **Learn a topic:** Map prerequisites, select or propose a suitable demo, and assign one bounded stage.
 - **Understand a project:** Build an evidence-backed project map, then divide the implementation into learning modules rather than narrating files line by line.
 - **Resume:** Continue the first incomplete or explicitly selected module from recorded evidence.
+- **Accelerate:** Increase the knowledge volume of a learning package without treating unintroduced core concepts as prerequisites.
 - **Assess:** Inspect the user's code and evidence, run available deterministic checks, ask at most 2-3 focused questions, and record the result.
 - **Skip:** Challenge the claimed knowledge; never mark a module skipped without passing evidence.
 
@@ -36,6 +37,7 @@ Read [progress-schema.md](references/progress-schema.md) before creating or chan
 - Give progressive hints: direction, relevant API or location, then the smallest useful code fragment.
 - Assess correctness, engine semantics, testability, code quality, and the user's explanation of runtime behavior.
 - Use Go comparisons only to establish intuition; require answers in Cocos/TypeScript terms.
+- Before assigning a multi-concept exercise, distinguish verified prerequisites from new concepts. Teach or minimally check each new critical concept before requiring it in an integrated implementation.
 - Complete one stage, update evidence, ask whether the user wants to continue or ask questions, and stop before advancing.
 
 ## Gate every completed stage
