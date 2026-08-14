@@ -1,5 +1,19 @@
 {
   "modules": {
+    "project.basics-lab.boolean-node-visibility": {
+      "assessment_id": "boolean-node-visibility-stage-01-v1",
+      "evidence": [
+        "evidence/boolean-node-visibility-stage-01.md"
+      ],
+      "note": "Passed boolean visibility state, guarded HelpLabel active rendering, preview toggle evidence, and separation-of-responsibilities explanation.",
+      "source": "learning_assessment",
+      "stage_gate": {
+        "status": "ready_for_next_stage",
+        "updated_at": "2026-08-13T09:07:21Z"
+      },
+      "status": "passed",
+      "updated_at": "2026-08-13T09:07:21Z"
+    },
     "project.basics-lab.button-score": {
       "assessment_id": "button-score-stage-01-v1",
       "evidence": [
@@ -28,6 +42,48 @@
       "status": "passed",
       "updated_at": "2026-08-11T09:33:57Z"
     },
+    "project.basics-lab.event-lifecycle-cleanup": {
+      "assessment_id": "event-lifecycle-cleanup-stage-01-v1",
+      "evidence": [
+        "evidence/event-lifecycle-cleanup-stage-01.md"
+      ],
+      "note": "Passed: inspected named callback registration and matching cleanup in onDestroy; learner reported normal preview and explained stale callback risk after component destruction.",
+      "source": "learning_assessment",
+      "stage_gate": {
+        "status": "ready_for_next_stage",
+        "updated_at": "2026-08-13T09:43:55Z"
+      },
+      "status": "passed",
+      "updated_at": "2026-08-13T09:43:55Z"
+    },
+    "project.basics-lab.reset-state": {
+      "assessment_id": "reset-state-stage-01-v1",
+      "evidence": [
+        "evidence/reset-state-stage-01.md"
+      ],
+      "note": "Passed: ResetButton binding, symmetric listener lifecycle, related-state reset, render-method reuse, normal preview report, and correct state-versus-view explanation.",
+      "source": "learning_assessment",
+      "stage_gate": {
+        "status": "ready_for_next_stage",
+        "updated_at": "2026-08-14T03:30:59Z"
+      },
+      "status": "passed",
+      "updated_at": "2026-08-14T03:30:59Z"
+    },
+    "project.basics-lab.round-state-input-lifecycle": {
+      "assessment_id": "round-state-input-lifecycle-stage-01-v1",
+      "evidence": [
+        "evidence/round-state-input-lifecycle-stage-01.md"
+      ],
+      "note": "Passed acceleration package: round state machine, centralized button rendering, global keyboard input lifecycle, running-only countdown, restart isolation, inspected scene bindings, static audit, learner-reported preview, and runtime explanation.",
+      "source": "learning_assessment",
+      "stage_gate": {
+        "status": "ready_for_next_stage",
+        "updated_at": "2026-08-14T09:41:23Z"
+      },
+      "status": "passed",
+      "updated_at": "2026-08-14T09:41:23Z"
+    },
     "project.basics-lab.score-parameters-conditions": {
       "assessment_id": "score-parameters-conditions-stage-01-v1",
       "evidence": [
@@ -36,11 +92,11 @@
       "note": "Passed two Button bindings, shared delta method, score lower-bound condition, preview sequence, and parameter/condition explanation.",
       "source": "learning_assessment",
       "stage_gate": {
-        "status": "awaiting_learner_decision",
-        "updated_at": "2026-08-11T11:05:04Z"
+        "status": "ready_for_next_stage",
+        "updated_at": "2026-08-13T08:18:05Z"
       },
       "status": "passed",
-      "updated_at": "2026-08-11T11:05:04Z"
+      "updated_at": "2026-08-13T08:18:05Z"
     },
     "project.basics-lab.state-to-label": {
       "assessment_id": "state-to-label-stage-01-v1",
@@ -69,9 +125,23 @@
       },
       "status": "passed",
       "updated_at": "2026-08-11T10:15:05Z"
+    },
+    "project.basics-lab.update-deltatime-timer": {
+      "assessment_id": "update-deltatime-timer-stage-01-v1",
+      "evidence": [
+        "evidence/update-deltatime-timer-stage-01.md"
+      ],
+      "note": "Passed: TimerLabel binding, guarded whole-second rendering from update(deltaTime), normal preview report, and correct frame-time explanation.",
+      "source": "learning_assessment",
+      "stage_gate": {
+        "status": "ready_for_next_stage",
+        "updated_at": "2026-08-13T10:15:12Z"
+      },
+      "status": "passed",
+      "updated_at": "2026-08-13T10:15:12Z"
     }
   },
   "schema_version": 1,
   "scope": "project",
-  "updated_at": "2026-08-11T11:05:04Z"
+  "updated_at": "2026-08-14T09:41:23Z"
 }
