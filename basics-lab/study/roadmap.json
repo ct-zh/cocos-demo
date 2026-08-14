@@ -1,5 +1,5 @@
 {
-  "active_module": "project.basics-lab.score-parameters-conditions",
+  "active_module": "project.basics-lab.round-state-input-lifecycle",
   "modules": {
     "project.basics-lab.component-entry": {
       "order": 1,
@@ -40,7 +40,7 @@
     },
     "project.basics-lab.score-parameters-conditions": {
       "order": 4,
-      "status": "active",
+      "status": "planned",
       "title": "方法参数与得分下限",
       "objectives": [
         "创建并绑定第二个 Button",
@@ -50,9 +50,80 @@
       "prerequisites": [
         "project.basics-lab.button-score"
       ]
+    },
+    "project.basics-lab.boolean-node-visibility": {
+      "order": 5,
+      "status": "planned",
+      "title": "布尔状态与节点显示",
+      "objectives": [
+        "使用 boolean 字段保存显示或隐藏状态",
+        "用 @property(Node) 绑定场景节点",
+        "通过 Node.active 根据状态控制节点可见性"
+      ],
+      "prerequisites": [
+        "project.basics-lab.score-parameters-conditions"
+      ]
+    },
+    "project.basics-lab.event-lifecycle-cleanup": {
+      "order": 6,
+      "status": "planned",
+      "title": "事件监听与组件销毁清理",
+      "objectives": [
+        "用具名组件方法作为 Button 点击回调",
+        "理解 on 与 off 需要相同的方法引用和 this 目标",
+        "在 onDestroy() 中清理组件注册的事件"
+      ],
+      "prerequisites": [
+        "project.basics-lab.boolean-node-visibility"
+      ]
+    },
+    "project.basics-lab.update-deltatime-timer": {
+      "order": 7,
+      "status": "planned",
+      "title": "逐帧更新与 deltaTime 计时",
+      "objectives": [
+        "理解 update(deltaTime) 会在组件启用期间逐帧调用",
+        "用 deltaTime 累计实际经过的秒数",
+        "将整数秒渲染到新建的 Label，且不影响原有按钮功能"
+      ],
+      "prerequisites": [
+        "project.basics-lab.event-lifecycle-cleanup"
+      ]
+    },
+    "project.basics-lab.reset-state": {
+      "order": 8,
+      "status": "planned",
+      "title": "集中重置多个组件状态",
+      "objectives": [
+        "区分状态重置与界面刷新",
+        "用一个具名按钮回调恢复多个相关状态",
+        "复用已有刷新方法并维护事件解绑对称性"
+      ],
+      "prerequisites": [
+        "project.basics-lab.update-deltatime-timer"
+      ]
+    },
+    "project.basics-lab.round-state-input-lifecycle": {
+      "order": 9,
+      "status": "active",
+      "title": "加速包：挑战回合的状态机、输入与生命周期",
+      "objectives": [
+        "用 enum 表达 idle、running、paused、finished 四种互斥回合状态",
+        "将剩余时间、得分和回合状态作为组件的单一事实来源",
+        "用一个集中 render 方法将状态投影到 Label、Node.active 和 Button.interactable",
+        "让开始、暂停和重开按钮只触发状态转换而不直接拼接界面文本",
+        "用 input 监听键盘 Space 与 R，并与按钮复用同一组意图方法",
+        "在 onEnable 与 onDisable 对称注册和解除全局输入监听",
+        "只在 running 状态下从 update(deltaTime) 推进倒计时",
+        "在倒计时归零时完成一次幂等的 finished 状态转换",
+        "验证鼠标和键盘两条输入路径、暂停冻结和重开重置都保持一致"
+      ],
+      "prerequisites": [
+        "project.basics-lab.reset-state"
+      ]
     }
   },
   "schema_version": 1,
   "scope": "project",
-  "updated_at": "2026-08-11T10:56:00Z"
+  "updated_at": "2026-08-14T03:44:00Z"
 }
