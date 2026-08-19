@@ -1,5 +1,5 @@
 {
-  "active_module": "project.basics-lab.round-state-input-lifecycle",
+  "active_module": "project.basics-lab.score-popup-pool-lifecycle",
   "modules": {
     "project.basics-lab.component-entry": {
       "order": 1,
@@ -105,7 +105,7 @@
     },
     "project.basics-lab.round-state-input-lifecycle": {
       "order": 9,
-      "status": "active",
+      "status": "planned",
       "title": "加速包：挑战回合的状态机、输入与生命周期",
       "objectives": [
         "用 enum 表达 idle、running、paused、finished 四种互斥回合状态",
@@ -121,9 +121,47 @@
       "prerequisites": [
         "project.basics-lab.reset-state"
       ]
+    },
+    "project.basics-lab.score-popup-prefab-lifecycle": {
+      "order": 10,
+      "status": "planned",
+      "title": "加速包：得分飘字的 Prefab、动画与生命周期",
+      "objectives": [
+        "区分场景中的节点模板与 assets 中可复用的 Prefab 资源",
+        "用 @property(Prefab) 在 Inspector 绑定资源而不是依赖字符串路径加载",
+        "用 instantiate 创建独立的 Prefab 实例并挂载到指定父节点",
+        "根据实际得分变化配置实例 Label 的正负文字",
+        "理解 UI 本地坐标，并让飘字从固定的 PopupLayer 位置出现",
+        "用 Tween 让实例上移并淡出，不把动画逻辑塞进 update",
+        "在动画完成后销毁临时实例，避免节点不断累积",
+        "处理快速连续点击产生的多个并发实例且互不干扰",
+        "保持已有得分下限、回合、键盘与重置功能不变"
+      ],
+      "prerequisites": [
+        "project.basics-lab.round-state-input-lifecycle"
+      ]
+    },
+    "project.basics-lab.score-popup-pool-lifecycle": {
+      "order": 11,
+      "status": "active",
+      "title": "加速包：得分飘字的对象复用与回收边界",
+      "objectives": [
+        "区分节点的物理生命周期与一次飘字效果的逻辑生命周期",
+        "用空闲节点集合表示可复用的飘字资源",
+        "在取得节点时优先复用空闲节点，只在空闲集合为空时 instantiate",
+        "在回收节点时停止仍可能运行的 Tween，避免旧动画影响下一次使用",
+        "在每次取得节点时重置位置、文字、透明度、激活状态和父节点关系",
+        "让动画结束回收节点而不是销毁节点，并保证同一节点不会重复回收",
+        "处理快速连续点击下多个活跃飘字与旧回调的生命周期边界",
+        "理解 Tween 的目标对象必须与停止动画时的目标对象一致",
+        "保持既有得分、回合、键盘输入和 Prefab 绑定行为不变"
+      ],
+      "prerequisites": [
+        "project.basics-lab.score-popup-prefab-lifecycle"
+      ]
     }
   },
   "schema_version": 1,
   "scope": "project",
-  "updated_at": "2026-08-14T03:44:00Z"
+  "updated_at": "2026-08-15T04:35:40Z"
 }

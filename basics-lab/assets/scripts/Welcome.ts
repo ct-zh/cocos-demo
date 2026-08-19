@@ -1,4 +1,4 @@
-import { _decorator, Component, Label, Button, input, Input, EventKeyboard, KeyCode } from 'cc';
+import { _decorator, Component, Label, Button, input, Input, EventKeyboard, KeyCode, Node, Prefab, instantiate, tween, Vec3, UIOpacity } from 'cc';
 const { ccclass, property } = _decorator;
 
 // 回合状态枚举
@@ -31,6 +31,8 @@ export class Welcome extends Component {
         this.score += delta
         if (this.score < 0) {
             this.score = 0
+        } else { // 仅在分数不小于0时生成飘字
+            this.genScorePopup(delta) // 生成飘字
         }
         this.refreshLabelTxt()
     }
@@ -217,6 +219,49 @@ export class Welcome extends Component {
 
     // }}}}}}}}}}} 回合数据
 
+    // {{{{{{{{{{{ 飘字
+    @property(Prefab)
+    scorePopupPrefab: Prefab | null = null
+
+    @property(Node)
+    popupLayer: Node | null = null
+
+    // 生成飘字
+    private genScorePopup(delta: number): void {
+        if (!this.scorePopupPrefab || !this.popupLayer) {
+            return
+        }
+
+        // 新建一个飘字
+        const tmpPopup = instantiate(this.scorePopupPrefab)
+        tmpPopup.setPosition(0, 0, 0)
+        tmpPopup.setParent(this.popupLayer)
+
+        const popupLabel = tmpPopup.getComponentInChildren(Label)
+        if (popupLabel) {
+            popupLabel.string = `${delta}`
+            if (delta > 0) {
+                popupLabel.string = `+${delta}`
+            }
+
+            let opacity = popupLabel.getComponent(UIOpacity)
+            if (!opacity) {
+                opacity = popupLabel.addComponent(UIOpacity)
+            }
+            opacity.opacity = 255
+            tween(opacity)
+                .to(0.7, { opacity: 0 })
+                .start()
+        }
+
+        const move = 0.5 + Math.random() * 0.5
+        tween(tmpPopup)
+            .by(move, { position: new Vec3(0, 80, 0) })
+            .call(() => tmpPopup.destroy())
+            .start()
+    }
+
+    // }}}}}}}}}}}
 
     start() {
         console.log('start')

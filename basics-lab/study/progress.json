@@ -98,6 +98,20 @@
       "status": "passed",
       "updated_at": "2026-08-13T08:18:05Z"
     },
+    "project.basics-lab.score-popup-prefab-lifecycle": {
+      "assessment_id": "score-popup-prefab-lifecycle-stage-01-v1",
+      "evidence": [
+        "evidence/score-popup-prefab-lifecycle-stage-01.md"
+      ],
+      "note": "Passed acceleration package: Prefab binding, independent instantiate lifecycle, PopupLayer parenting, Tween movement and opacity, instance destruction, static audit, learner-reported preview, and runtime explanation.",
+      "source": "learning_assessment",
+      "stage_gate": {
+        "status": "ready_for_next_stage",
+        "updated_at": "2026-08-15T04:35:35Z"
+      },
+      "status": "passed",
+      "updated_at": "2026-08-15T04:35:35Z"
+    },
     "project.basics-lab.state-to-label": {
       "assessment_id": "state-to-label-stage-01-v1",
       "evidence": [
@@ -143,5 +157,5 @@
   },
   "schema_version": 1,
   "scope": "project",
-  "updated_at": "2026-08-14T09:41:23Z"
+  "updated_at": "2026-08-15T04:35:35Z"
 }
