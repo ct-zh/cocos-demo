@@ -38,6 +38,7 @@ Read [progress-schema.md](references/progress-schema.md) before creating or chan
 - Assess correctness, engine semantics, testability, code quality, and the user's explanation of runtime behavior.
 - Use Go comparisons only to establish intuition; require answers in Cocos/TypeScript terms.
 - Before assigning a multi-concept exercise, distinguish verified prerequisites from new concepts. Teach or minimally check each new critical concept before requiring it in an integrated implementation.
+- When generating review, assessment, or code-behavior prediction questions that depend on relationships among code elements, provide the smallest directly relevant code or scene-context snippet before the question. Keep enough context to reason about calls, state, or lifecycle, but do not reveal the answer or a complete exercise solution. Standalone API-definition or concept questions do not require code context.
 - Complete one stage, update evidence, ask whether the user wants to continue or ask questions, and stop before advancing.
 
 ## Gate every completed stage
