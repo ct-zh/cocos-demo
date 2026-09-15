@@ -25,6 +25,15 @@ export class GameManager extends Component {
     private perfectStreak = 0;
     private oreCount = 0;
     private lastJudgement = 'Waiting';
+    private perfectCount = 0;
+    private goodCount = 0;
+    private missCount = 0;
+    private maxCombo = 0;
+    private timingSampleCount = 0;
+    private totalAbsTimingMs = 0;
+    private lastTimingMs = 0;
+    private firstSwingAt: number | null = null;
+    private completedSeconds: number | null = null;
 
     start(): void {
         profiler.hideStats();
@@ -39,7 +48,14 @@ export class GameManager extends Component {
             if (Math.abs(ore.node.position.x - this.player.worldX) < 48) {
                 this.ores = this.ores.filter((candidate) => candidate !== ore);
                 this.audio.playCollect();
-                ore.collect(() => { this.oreCount++; this.ui.setOre(this.oreCount); });
+                ore.collect(() => {
+                    this.oreCount++;
+                    this.ui.setOre(this.oreCount);
+                    if (this.rocks.length === 0 && this.ores.length === 0 && this.completedSeconds === null) {
+                        this.completedSeconds = this.playSeconds;
+                        this.ui.showComplete(this.completedSeconds);
+                    }
+                });
             }
         }
         this.publishDebugState();
@@ -117,6 +133,7 @@ export class GameManager extends Component {
     }
 
     private tryMine(): void {
+        if (this.firstSwingAt === null) this.firstSwingAt = performance.now();
         this.audio.playSwing();
         const result = this.beat.judgeNow();
         const target = this.rocks
@@ -129,16 +146,24 @@ export class GameManager extends Component {
         if (judgement === BeatJudgement.Miss) {
             this.combo = 0;
             this.perfectStreak = 0;
+            this.missCount++;
         } else {
             this.combo++;
+            this.maxCombo = Math.max(this.maxCombo, this.combo);
             this.perfectStreak = judgement === BeatJudgement.Perfect ? this.perfectStreak + 1 : 0;
+            if (judgement === BeatJudgement.Perfect) this.perfectCount++;
+            else this.goodCount++;
             target.takeHit(result.damage, judgement, this.perfectStreak);
             if (judgement === BeatJudgement.Perfect) this.audio.playPerfect();
             else this.audio.playGood();
         }
+        this.lastTimingMs = Math.round(result.offsetSeconds * 1000);
+        this.timingSampleCount++;
+        this.totalAbsTimingMs += Math.abs(result.offsetSeconds * 1000);
         this.lastJudgement = judgement;
-        this.ui.showJudgement(judgement, this.combo);
-        this.shake(judgement === BeatJudgement.Perfect ? 8 : 4);
+        this.ui.showJudgement(judgement, this.combo, result.offsetSeconds, !!inRange);
+        this.ui.updateStats(this.perfectCount, this.goodCount, this.missCount, this.maxCombo, this.averageAbsTimingMs);
+        if (judgement !== BeatJudgement.Miss) this.shake(judgement === BeatJudgement.Perfect ? 8 : 3);
     }
 
     private onBeat(active: number): void {
@@ -155,16 +180,28 @@ export class GameManager extends Component {
 
     private installDebugApi(): void {
         (window as unknown as { __beatMiningDebug?: DebugApi }).__beatMiningDebug = {
-            state: () => ({ combo: this.combo, perfectStreak: this.perfectStreak, oreCount: this.oreCount, rocks: this.rocks.length, ores: this.ores.length, judgement: this.lastJudgement, playerX: Math.round(this.player.worldX), beatProgress: this.beat.progress }),
+            state: () => this.debugState(),
             forceSwing: () => this.player.swing(),
             teleportToRock: () => { const rock = this.rocks[0]; if (rock) this.player.node.setPosition(rock.node.position.x - 72, -205); },
         };
     }
 
     private publishDebugState(): void {
-        document.documentElement.dataset.beatMiningState = JSON.stringify({
+        document.documentElement.dataset.beatMiningState = JSON.stringify(this.debugState());
+    }
+
+    private debugState(): object {
+        return {
             combo: this.combo,
             perfectStreak: this.perfectStreak,
+            perfectCount: this.perfectCount,
+            goodCount: this.goodCount,
+            missCount: this.missCount,
+            maxCombo: this.maxCombo,
+            lastTimingMs: this.lastTimingMs,
+            averageAbsTimingMs: Math.round(this.averageAbsTimingMs),
+            playSeconds: Number(this.playSeconds.toFixed(2)),
+            completedSeconds: this.completedSeconds,
             oreCount: this.oreCount,
             rocks: this.rocks.length,
             ores: this.ores.length,
@@ -176,6 +213,15 @@ export class GameManager extends Component {
             musicTime: this.audio.musicTime,
             bpm: MINE_TRACK.bpm,
             beatsPerBar: MINE_TRACK.beatsPerBar,
-        });
+            inputOffsetMs: Math.round(MINE_TRACK.inputOffsetSeconds * 1000),
+        };
+    }
+
+    private get averageAbsTimingMs(): number {
+        return this.timingSampleCount === 0 ? Number.NaN : this.totalAbsTimingMs / this.timingSampleCount;
+    }
+
+    private get playSeconds(): number {
+        return this.firstSwingAt === null ? 0 : (performance.now() - this.firstSwingAt) / 1000;
     }
 }

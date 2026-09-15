@@ -8,6 +8,7 @@ export class BeatManager extends Component {
     private bpm = 120;
     private beatsPerBar = 4;
     private beatOffsetSeconds = 0;
+    private inputOffsetSeconds = 0;
     private perfectWindowSeconds = 0.075;
     private goodWindowSeconds = 0.18;
     private startedAt = 0;
@@ -19,6 +20,7 @@ export class BeatManager extends Component {
         this.bpm = track.bpm;
         this.beatsPerBar = track.beatsPerBar;
         this.beatOffsetSeconds = track.beatOffsetSeconds;
+        this.inputOffsetSeconds = track.inputOffsetSeconds;
         this.perfectWindowSeconds = track.perfectWindowSeconds;
         this.goodWindowSeconds = track.goodWindowSeconds;
         this.onBeatCallback = onBeat;
@@ -45,11 +47,13 @@ export class BeatManager extends Component {
     }
 
     judgeNow(): BeatResult {
-        const phase = this.elapsed() % this.beatDuration;
-        const distance = Math.min(phase, this.beatDuration - phase);
-        if (distance <= this.perfectWindowSeconds) return { judgement: BeatJudgement.Perfect, damage: 2, distanceSeconds: distance };
-        if (distance <= this.goodWindowSeconds) return { judgement: BeatJudgement.Good, damage: 1, distanceSeconds: distance };
-        return { judgement: BeatJudgement.Miss, damage: 0, distanceSeconds: distance };
+        const judgedTime = this.elapsed() - this.inputOffsetSeconds;
+        const phase = ((judgedTime % this.beatDuration) + this.beatDuration) % this.beatDuration;
+        const offset = phase <= this.beatDuration / 2 ? phase : phase - this.beatDuration;
+        const distance = Math.abs(offset);
+        if (distance <= this.perfectWindowSeconds) return { judgement: BeatJudgement.Perfect, damage: 2, distanceSeconds: distance, offsetSeconds: offset };
+        if (distance <= this.goodWindowSeconds) return { judgement: BeatJudgement.Good, damage: 1, distanceSeconds: distance, offsetSeconds: offset };
+        return { judgement: BeatJudgement.Miss, damage: 0, distanceSeconds: distance, offsetSeconds: offset };
     }
 
     get beatDuration(): number { return 60 / this.bpm; }

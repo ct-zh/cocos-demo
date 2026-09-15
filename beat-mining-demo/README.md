@@ -2,7 +2,7 @@
 
 一个使用 Cocos Creator 3.8.8 制作的最小 2D 像素风节拍采矿试玩。包含移动、112 BPM 四拍节拍器、Perfect/Good/Miss 判定、挥镐反馈、连击、岩石破坏、矿石掉落与收集。
 
-音乐采用原创 112 BPM、4/4、8 小节 8-bit Chiptune 循环，并配有挥镐、Good、Perfect、岩石碎裂和矿石收集音效。每首音乐通过独立配置声明 BPM、拍号、节拍偏移和判定窗口，游戏持续使用音乐播放时间进行判定。受浏览器自动播放策略限制，背景音乐会在玩家首次按键后开始。
+音乐采用原创 112 BPM、4/4、8 小节 8-bit Chiptune 循环，并配有挥镐、Good、Perfect、岩石碎裂和矿石收集音效。每首音乐通过独立配置声明 BPM、拍号、节拍偏移、输入延迟补偿和判定窗口，游戏持续使用音乐播放时间进行判定。受浏览器自动播放策略限制，背景音乐会在玩家首次按键后开始。
 
 ## 打开项目
 
@@ -17,6 +17,7 @@
 2. 点击运行按钮。
 3. 使用 `A/D` 或左右方向键移动，按空格键挥镐。
 4. 靠近岩石，并在顶部黄色节拍方块亮起时挥镐。
+5. 判定下方会显示本次输入偏早或偏晚的毫秒数；底部显示 Perfect、Good、Miss、最大连击和平均绝对偏差，供试玩调参使用。
 
 ## 构建 Web/H5
 
@@ -36,6 +37,8 @@
 - `UIController.ts`：节拍、判定、连击和矿石数量。
 - `AudioManager.ts`：加载并播放循环音乐和各类操作音效。
 - `MusicTrackConfig.ts`：保存当前 BGM 对应的 BPM、拍号、偏移和判定窗口。
+
+`MusicTrackConfig.ts` 中的 `inputOffsetSeconds` 用于设备或玩家输入延迟校准：试玩数据长期显示 `LATE` 时填写正值，长期显示 `EARLY` 时填写负值。例如平均晚 35 ms，可设为 `0.035`。
 
 音频由 `tools/generate_chiptune.py` 生成；需要重新生成时，在项目目录执行 `python3 tools/generate_chiptune.py`。旧版 120 BPM 音乐备份在 `tools/audio-backups/mine_loop_120bpm_original_20260915.wav`。
 

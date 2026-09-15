@@ -1,6 +1,6 @@
 import { _decorator, Color, Component, Graphics, tween, Vec3 } from 'cc';
 import { BeatJudgement } from './BeatTypes';
-import { fillRect } from './PixelArt';
+import { fillRect, makeGraphicsNode } from './PixelArt';
 const { ccclass } = _decorator;
 
 @ccclass('MiningRock')
@@ -18,6 +18,7 @@ export class MiningRock extends Component {
     takeHit(damage: number, judgement: BeatJudgement, perfectStreak: number): void {
         this.hp -= damage;
         this.redraw(judgement === BeatJudgement.Perfect);
+        this.spawnDebris(judgement === BeatJudgement.Perfect, perfectStreak);
         const strength = judgement === BeatJudgement.Perfect ? 1.15 + Math.min(perfectStreak, 5) * 0.04 : 1.08;
         tween(this.node).to(0.06, { scale: new Vec3(strength, 0.9, 1) }).to(0.08, { scale: Vec3.ONE }).start();
         if (this.hp <= 0) {
@@ -26,6 +27,28 @@ export class MiningRock extends Component {
                 this.brokenCallback?.(x);
                 this.node.destroy();
             }).start();
+        }
+    }
+
+    private spawnDebris(perfect: boolean, perfectStreak: number): void {
+        const parent = this.node.parent;
+        if (!parent) return;
+        const count = perfect ? 4 + Math.min(perfectStreak, 4) : 2;
+        for (let i = 0; i < count; i++) {
+            const chip = makeGraphicsNode('RockChip', parent, 8, 8);
+            chip.setPosition(this.node.position);
+            const g = chip.getComponent(Graphics)!;
+            fillRect(g, perfect ? new Color(255, 238, 128) : new Color(92, 178, 188), -4, -4, 8, 8);
+            const direction = i % 2 === 0 ? -1 : 1;
+            const spread = 18 + (i % 3) * 11;
+            tween(chip)
+                .to(0.18, {
+                    position: new Vec3(this.node.position.x + direction * spread, this.node.position.y + 24 + (i % 3) * 12, 0),
+                    scale: new Vec3(0.2, 0.2, 1),
+                    angle: direction * 35,
+                })
+                .call(() => chip.destroy())
+                .start();
         }
     }
 

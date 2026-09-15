@@ -38,10 +38,15 @@ export class Player extends Component {
         this.swinging = true;
         this.requestMine?.();
         this.pickaxe.setScale(this.facing, 1, 1);
+        tween(this.node)
+            .to(0.04, { scale: new Vec3(0.96, 1.04, 1) })
+            .to(0.08, { scale: new Vec3(1.03, 0.97, 1) })
+            .to(0.12, { scale: Vec3.ONE })
+            .start();
         tween(this.pickaxe)
-            .to(0.07, { angle: -55 * this.facing })
-            .to(0.09, { angle: 35 * this.facing })
-            .to(0.08, { angle: 0 })
+            .to(0.045, { angle: -48 * this.facing })
+            .to(0.065, { angle: 42 * this.facing })
+            .to(0.11, { angle: 0 })
             .call(() => { this.swinging = false; })
             .start();
     }

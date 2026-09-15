@@ -8,4 +8,5 @@ export interface BeatResult {
     judgement: BeatJudgement;
     damage: number;
     distanceSeconds: number;
+    offsetSeconds: number;
 }
