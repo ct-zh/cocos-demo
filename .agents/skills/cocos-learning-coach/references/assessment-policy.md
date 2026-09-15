@@ -4,9 +4,10 @@
 
 1. Evidence types
 2. Standard assessment
-3. Skip challenge
-4. Question interaction
-5. Status rules
+3. Runtime evidence is not a quiz
+4. Skip challenge
+5. Question interaction
+6. Status rules
 
 ## 1. Evidence types
 
@@ -24,9 +25,9 @@ Use deterministic checks for quantifiable claims. Do not use a fragile regex as 
 
 An assessment may be:
 
-- one user-written code task plus 1-2 questions;
+- one user-written code task plus 0-2 questions for still-unproven critical objectives;
 - 2-3 focused questions for a conceptual module;
-- one editor task with serialized or visual evidence plus 1-2 questions.
+- one editor task with serialized or visual evidence plus 0-2 questions for still-unproven critical objectives.
 
 For an acceleration package, assess the integrated implementation rather than treating each micro-check as a completed module. Use micro-check results only to expose and repair an immediate gap before the learner proceeds.
 
@@ -34,7 +35,15 @@ Require the user to explain at least one relevant runtime behavior for engine-sp
 
 Pass only when all critical objectives are met. Record partial success by objective instead of rounding it into a pass. A pass opens a stage-end choice; it does not auto-advance the learner.
 
-## 3. Skip challenge
+## 3. Runtime evidence is not a quiz
+
+Use an exercise's stated preview sequence to request runtime evidence once. Ask for the concrete observed results or a complete error message; do not use a generic question such as "Does the game display as expected?" as the first or default assessment question.
+
+If the learner has already supplied the requested preview sequence, preserve it as evidence and do not ask for the same result again. Ask a follow-up only when a specific required behavior is missing, contradictory, or cannot be observed from the supplied evidence.
+
+Treat a runtime-evidence request as evidence collection, not as a conceptual question. Assessment questions must probe a distinct, critical objective that remains unproven by the code, auditor, scene data, and runtime evidence.
+
+## 4. Skip challenge
 
 When the user claims familiarity and asks to skip:
 
@@ -47,13 +56,13 @@ When the user claims familiarity and asks to skip:
 
 Do not disclose the answer rubric before receiving the response.
 
-## 4. Question interaction
+## 5. Question interaction
 
 Prefer the interactive question tool for module selection, self-rating, and well-formed multiple-choice questions when it is available. Use ordinary conversation for free-form explanation, code reading, and runtime prediction when choices would make guessing too easy.
 
-Ask no more than three questions in one assessment round. Questions should be independent enough to identify the missing objective.
+For a code or editor implementation, ask zero questions when evidence covers every critical objective; otherwise ask one or two. Do not target a fixed count. Reserve two or three questions for a conceptual-only module or a prior-knowledge challenge. Questions should be independent enough to identify a missing objective and must not duplicate collected runtime evidence.
 
-## 5. Status rules
+## 6. Status rules
 
 Use these conceptual states when progress storage is available:
 

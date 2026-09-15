@@ -4,6 +4,7 @@
 
 | 目录 | 项目 | Creator 版本 | 类型 | 学习重点 | 入口场景 | 状态 |
 | --- | --- | --- | --- | --- | --- | --- |
+| `Airplane` | Airplane | 3.3.2 | 官方 3D 飞机射击教程项目 | 游戏主流程、实体职责、碰撞、对象池、音频与 UI | `assets/scene/airplane.scene` | 已初始化，进行中 |
 | `basics-lab` | 基础实验室 | 3.8.8 | 学习实验项目 | 组件、事件、生命周期、状态、分数弹窗预制体与对象池 | `assets/scenes/Hello.scenes.scene` | 已初始化，进行中 |
 | `demo` | 拼图 Demo | 3.8.8 | 单机拼图小游戏 | 动态 UI、资源加载、图块状态、触摸交互与胜利判定 | `assets/scenes/Game.scene` | 已完成结构检查，运行待验证 |
 | `beat-mining-demo` | 节拍采矿 Demo | 3.8.8 | 2D H5 节奏采矿试玩 | 键盘移动、节拍判定、连击、挖矿、掉落与收集 | `assets/scenes/Game.scene` | 已完成，Web 运行已验证 |

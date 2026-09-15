@@ -1,21 +1,30 @@
 {
   "pending_creations": [],
   "projects": {
+    "airplane": {
+      "creator_version": "3.3.2",
+      "entry_scene": "assets/scene/airplane.scene",
+      "learning_focus": [
+        "游戏主流程",
+        "实体职责",
+        "碰撞",
+        "对象池",
+        "音频",
+        "UI"
+      ],
+      "name": "airplane",
+      "path": "Airplane",
+      "project_type": "官方 3D 飞机射击教程项目",
+      "runtime_validation_status": "not_verified",
+      "study_status": "initialized",
+      "updated_at": "2026-08-20T06:45:34Z"
+    },
     "basics-lab": {
       "creator_version": "3.8.8",
       "name": "basics-lab",
       "path": "basics-lab",
       "study_status": "initialized",
       "updated_at": "2026-07-31T10:21:12Z"
-    },
-    "demo": {
-      "creator_version": "3.8.8",
-      "last_inspected_at": "2026-07-31T09:58:50Z",
-      "name": "demo",
-      "path": "demo",
-      "runtime_validation_status": "not_verified",
-      "study_status": "structurally_inspected",
-      "updated_at": "2026-07-31T09:58:50Z"
     },
     "beat-mining-demo": {
       "creator_version": "3.8.8",
@@ -33,6 +42,15 @@
       "runtime_validation_status": "verified",
       "study_status": "initialized",
       "updated_at": "2026-09-15T09:20:05Z"
+    },
+    "demo": {
+      "creator_version": "3.8.8",
+      "last_inspected_at": "2026-07-31T09:58:50Z",
+      "name": "demo",
+      "path": "demo",
+      "runtime_validation_status": "not_verified",
+      "study_status": "structurally_inspected",
+      "updated_at": "2026-07-31T09:58:50Z"
     }
   },
   "schema_version": 1,

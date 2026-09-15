@@ -66,7 +66,7 @@ Run one stage at a time:
 5. Ask the user to implement the core behavior manually.
 6. On submission, inspect the actual diff or files.
 7. Run deterministic checks that exist for the stage.
-8. Ask 2-3 focused questions when code alone does not prove understanding.
+8. Collect the requested runtime evidence once, then ask 0-2 focused questions only when code, deterministic checks, and that evidence still leave a critical objective unproven. A conceptual-only module may use up to 3 questions.
 9. Give the smallest useful review and allow correction.
 10. Record outcome and evidence.
 11. Invoke the mandatory stage-end choice: enter the next stage or ask about this stage.

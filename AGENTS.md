@@ -1,5 +1,11 @@
 # Cocos 学习工作区规则
 
+## 工作区概览
+
+- 此仓库是 Cocos Creator 学习工作区，包含独立项目 `Airplane`（Creator 3.3.2）、`basics-lab` 与 `demo`（均为 Creator 3.8.8）。请使用各项目 `package.json` 声明的版本打开；未经明确说明不要升级 Creator。
+- 各项目没有声明 npm 的构建、测试或 lint 脚本；以 Cocos Creator 编辑器打开入口场景进行运行验证。修改前先阅读 `<项目目录>/study/project-map.md`；`demo` 的设置说明见 `demo/SETUP_拼图.md`。
+- 不要编辑 Cocos 生成目录：`library/`、`temp/`、`local/`、`profiles/` 和 `node_modules/`；游戏代码与资源位于各项目 `assets/`。
+
 ## 目录职责
 
 - `.agents/skills/`：学习技能定义、自动化脚本及参考资料；不属于 Cocos Creator 项目代码。
