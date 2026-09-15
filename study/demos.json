@@ -16,8 +16,25 @@
       "runtime_validation_status": "not_verified",
       "study_status": "structurally_inspected",
       "updated_at": "2026-07-31T09:58:50Z"
+    },
+    "beat-mining-demo": {
+      "creator_version": "3.8.8",
+      "entry_scene": "assets/scenes/Game.scene",
+      "learning_focus": [
+        "键盘移动",
+        "节拍判定",
+        "连击",
+        "挖矿",
+        "掉落与收集"
+      ],
+      "name": "beat-mining-demo",
+      "path": "beat-mining-demo",
+      "project_type": "2D H5 节奏采矿试玩",
+      "runtime_validation_status": "verified",
+      "study_status": "initialized",
+      "updated_at": "2026-09-15T09:20:05Z"
     }
   },
   "schema_version": 1,
-  "updated_at": "2026-07-31T10:21:12Z"
+  "updated_at": "2026-09-15T09:20:05Z"
 }
