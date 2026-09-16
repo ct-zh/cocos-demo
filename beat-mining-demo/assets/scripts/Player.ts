@@ -8,12 +8,16 @@ export class Player extends Component {
     private rightDown = false;
     private facing = 1;
     private swinging = false;
-    private requestMine: (() => void) | null = null;
+    private requestMine: (() => SwingPlan) | null = null;
     private body!: Graphics;
     private pickaxe!: Node;
     private readonly speed = 260;
+    private readonly acceleration = 2400;
+    private readonly deceleration = 3200;
+    private readonly initialMoveSpeed = 120;
+    private velocityX = 0;
 
-    initialize(requestMine: () => void): void {
+    initialize(requestMine: () => SwingPlan): void {
         this.requestMine = requestMine;
         this.draw();
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
@@ -24,10 +28,14 @@ export class Player extends Component {
         const direction = (this.rightDown ? 1 : 0) - (this.leftDown ? 1 : 0);
         if (direction !== 0) {
             this.facing = direction;
-            const nextX = Math.max(-540, Math.min(540, this.node.position.x + direction * this.speed * dt));
-            this.node.setPosition(nextX, this.node.position.y, 0);
-            this.pickaxe.setScale(this.facing, 1, 1);
+            this.updateFacingVisual();
         }
+        const targetVelocity = direction * this.speed;
+        const changeRate = direction === 0 ? this.deceleration : this.acceleration;
+        this.velocityX = this.moveToward(this.velocityX, targetVelocity, changeRate * dt);
+        const nextX = Math.max(-540, Math.min(540, this.node.position.x + this.velocityX * dt));
+        if (nextX === -540 || nextX === 540) this.velocityX = 0;
+        this.node.setPosition(nextX, this.node.position.y, 0);
     }
 
     get miningPointX(): number { return this.node.position.x + this.facing * 72; }
@@ -36,8 +44,8 @@ export class Player extends Component {
     swing(): void {
         if (this.swinging) return;
         this.swinging = true;
-        this.requestMine?.();
-        this.pickaxe.setScale(this.facing, 1, 1);
+        const plan = this.requestMine?.() ?? { impactHoldSeconds: 0, onImpact: () => undefined };
+        this.updateFacingVisual();
         tween(this.node)
             .to(0.04, { scale: new Vec3(0.96, 1.04, 1) })
             .to(0.08, { scale: new Vec3(1.03, 0.97, 1) })
@@ -46,6 +54,8 @@ export class Player extends Component {
         tween(this.pickaxe)
             .to(0.045, { angle: -48 * this.facing })
             .to(0.065, { angle: 42 * this.facing })
+            .call(() => plan.onImpact())
+            .delay(plan.impactHoldSeconds)
             .to(0.11, { angle: 0 })
             .call(() => { this.swinging = false; })
             .start();
@@ -57,8 +67,14 @@ export class Player extends Component {
     }
 
     private onKeyDown(event: EventKeyboard): void {
-        if (event.keyCode === KeyCode.KEY_A || event.keyCode === KeyCode.ARROW_LEFT) { this.leftDown = true; this.nudge(-1); }
-        if (event.keyCode === KeyCode.KEY_D || event.keyCode === KeyCode.ARROW_RIGHT) { this.rightDown = true; this.nudge(1); }
+        if ((event.keyCode === KeyCode.KEY_A || event.keyCode === KeyCode.ARROW_LEFT) && !this.leftDown) {
+            this.leftDown = true;
+            this.velocityX = Math.min(this.velocityX, -this.initialMoveSpeed);
+        }
+        if ((event.keyCode === KeyCode.KEY_D || event.keyCode === KeyCode.ARROW_RIGHT) && !this.rightDown) {
+            this.rightDown = true;
+            this.velocityX = Math.max(this.velocityX, this.initialMoveSpeed);
+        }
         if (event.keyCode === KeyCode.SPACE) this.swing();
     }
 
@@ -67,10 +83,14 @@ export class Player extends Component {
         if (event.keyCode === KeyCode.KEY_D || event.keyCode === KeyCode.ARROW_RIGHT) this.rightDown = false;
     }
 
-    private nudge(direction: number): void {
-        this.facing = direction;
-        this.node.setPosition(Math.max(-540, Math.min(540, this.node.position.x + direction * 18)), this.node.position.y, 0);
+    private updateFacingVisual(): void {
         this.pickaxe.setScale(this.facing, 1, 1);
+        this.pickaxe.setPosition(30 * this.facing, 15);
+    }
+
+    private moveToward(current: number, target: number, maxDelta: number): number {
+        if (Math.abs(target - current) <= maxDelta) return target;
+        return current + Math.sign(target - current) * maxDelta;
     }
 
     private draw(): void {
@@ -83,11 +103,15 @@ export class Player extends Component {
         fillRect(this.body, new Color(241, 217, 154), 8, 20, 5, 5);
 
         this.pickaxe = makeGraphicsNode('Pickaxe', this.node, 80, 80);
-        this.pickaxe.setPosition(30, 15);
-        this.pickaxe.setScale(this.facing, 1, 1);
+        this.updateFacingVisual();
         const g = this.pickaxe.getComponent(Graphics)!;
         fillRect(g, new Color(116, 77, 50), -3, -34, 6, 62);
         fillRect(g, new Color(185, 201, 204), -28, 23, 56, 8);
     }
 
+}
+
+export interface SwingPlan {
+    impactHoldSeconds: number;
+    onImpact: () => void;
 }

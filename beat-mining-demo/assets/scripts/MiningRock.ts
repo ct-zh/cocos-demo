@@ -8,6 +8,7 @@ export class MiningRock extends Component {
     private hp = 5;
     private graphics!: Graphics;
     private brokenCallback: ((x: number) => void) | null = null;
+    private mineable = false;
 
     initialize(onBroken: (x: number) => void): void {
         this.brokenCallback = onBroken;
@@ -15,9 +16,16 @@ export class MiningRock extends Component {
         this.redraw(false);
     }
 
+    get remainingHp(): number { return this.hp; }
+
     takeHit(damage: number, judgement: BeatJudgement, perfectStreak: number): void {
         this.hp -= damage;
         this.redraw(judgement === BeatJudgement.Perfect);
+        if (judgement === BeatJudgement.Perfect) {
+            this.scheduleOnce(() => {
+                if (this.isValid && this.node.isValid) this.redraw(false);
+            }, 0.1);
+        }
         this.spawnDebris(judgement === BeatJudgement.Perfect, perfectStreak);
         const strength = judgement === BeatJudgement.Perfect ? 1.15 + Math.min(perfectStreak, 5) * 0.04 : 1.08;
         tween(this.node).to(0.06, { scale: new Vec3(strength, 0.9, 1) }).to(0.08, { scale: Vec3.ONE }).start();
@@ -28,6 +36,14 @@ export class MiningRock extends Component {
                 this.node.destroy();
             }).start();
         }
+    }
+
+    setMineable(value: boolean): void {
+        if (this.mineable === value) return;
+        this.mineable = value;
+        if (!this.graphics || !this.graphics.isValid || !this.node.isValid) return;
+        this.redraw(false);
+        if (value) tween(this.node).to(0.06, { scale: new Vec3(1.04, 1.04, 1) }).to(0.08, { scale: Vec3.ONE }).start();
     }
 
     private spawnDebris(perfect: boolean, perfectStreak: number): void {
@@ -55,6 +71,13 @@ export class MiningRock extends Component {
     private redraw(perfect: boolean): void {
         const g = this.graphics;
         g.clear();
+        if (this.mineable) {
+            const edge = new Color(113, 238, 224);
+            fillRect(g, edge, -50, -42, 100, 4);
+            fillRect(g, edge, -50, 38, 100, 4);
+            fillRect(g, edge, -50, -42, 4, 84);
+            fillRect(g, edge, 46, -42, 4, 84);
+        }
         fillRect(g, new Color(46, 39, 54), -46, -38, 92, 76);
         fillRect(g, new Color(81, 69, 88), -39, -31, 75, 60);
         fillRect(g, perfect ? new Color(255, 238, 128) : new Color(77, 200, 211), -17, -9, 15, 18);

@@ -6,7 +6,7 @@ import { MiningRock } from './MiningRock';
 import { MINE_TRACK } from './MusicTrackConfig';
 import { OrePickup } from './OrePickup';
 import { fillRect, makeGraphicsNode, setPosition } from './PixelArt';
-import { Player } from './Player';
+import { Player, SwingPlan } from './Player';
 import { UIController } from './UIController';
 const { ccclass } = _decorator;
 
@@ -34,6 +34,8 @@ export class GameManager extends Component {
     private lastTimingMs = 0;
     private firstSwingAt: number | null = null;
     private completedSeconds: number | null = null;
+    private mineableRock: MiningRock | null = null;
+    private impactPending = false;
 
     start(): void {
         profiler.hideStats();
@@ -43,6 +45,7 @@ export class GameManager extends Component {
     }
 
     update(): void {
+        this.updateMineableRock();
         this.ores = this.ores.filter((ore) => ore.isValid && ore.node.isValid);
         for (const ore of this.ores) {
             if (Math.abs(ore.node.position.x - this.player.worldX) < 48) {
@@ -117,6 +120,7 @@ export class GameManager extends Component {
         setPosition(node, x, -204);
         const rock = node.addComponent(MiningRock);
         rock.initialize((brokenX) => {
+            if (this.mineableRock === rock) this.mineableRock = null;
             this.rocks = this.rocks.filter((candidate) => candidate !== rock);
             this.audio.playRockBreak();
             this.spawnOre(brokenX);
@@ -132,13 +136,11 @@ export class GameManager extends Component {
         this.ores.push(ore);
     }
 
-    private tryMine(): void {
+    private tryMine(): SwingPlan {
         if (this.firstSwingAt === null) this.firstSwingAt = performance.now();
         this.audio.playSwing();
         const result = this.beat.judgeNow();
-        const target = this.rocks
-            .filter((rock) => rock.isValid && rock.node.isValid)
-            .sort((a, b) => Math.abs(a.node.position.x - this.player.miningPointX) - Math.abs(b.node.position.x - this.player.miningPointX))[0];
+        const target = this.findMiningTarget();
         const inRange = target && Math.abs(target.node.position.x - this.player.miningPointX) <= 92;
         let judgement = result.judgement;
         if (!inRange) judgement = BeatJudgement.Miss;
@@ -153,9 +155,6 @@ export class GameManager extends Component {
             this.perfectStreak = judgement === BeatJudgement.Perfect ? this.perfectStreak + 1 : 0;
             if (judgement === BeatJudgement.Perfect) this.perfectCount++;
             else this.goodCount++;
-            target.takeHit(result.damage, judgement, this.perfectStreak);
-            if (judgement === BeatJudgement.Perfect) this.audio.playPerfect();
-            else this.audio.playGood();
         }
         this.lastTimingMs = Math.round(result.offsetSeconds * 1000);
         this.timingSampleCount++;
@@ -163,7 +162,34 @@ export class GameManager extends Component {
         this.lastJudgement = judgement;
         this.ui.showJudgement(judgement, this.combo, result.offsetSeconds, !!inRange);
         this.ui.updateStats(this.perfectCount, this.goodCount, this.missCount, this.maxCombo, this.averageAbsTimingMs);
-        if (judgement !== BeatJudgement.Miss) this.shake(judgement === BeatJudgement.Perfect ? 8 : 3);
+        this.impactPending = judgement !== BeatJudgement.Miss;
+        const impactHoldSeconds = judgement === BeatJudgement.Perfect ? 0.03 : judgement === BeatJudgement.Good ? 0.012 : 0;
+        return {
+            impactHoldSeconds,
+            onImpact: () => {
+                this.impactPending = false;
+                if (judgement === BeatJudgement.Miss || !target?.isValid || !target.node.isValid) return;
+                target.takeHit(result.damage, judgement, this.perfectStreak);
+                if (judgement === BeatJudgement.Perfect) this.audio.playPerfect();
+                else this.audio.playGood();
+                this.shake(judgement === BeatJudgement.Perfect ? 8 : 3);
+            },
+        };
+    }
+
+    private findMiningTarget(): MiningRock | undefined {
+        return this.rocks
+            .filter((rock) => rock.isValid && rock.node.isValid)
+            .sort((a, b) => Math.abs(a.node.position.x - this.player.miningPointX) - Math.abs(b.node.position.x - this.player.miningPointX))[0];
+    }
+
+    private updateMineableRock(): void {
+        const target = this.findMiningTarget();
+        const next = target && Math.abs(target.node.position.x - this.player.miningPointX) <= 92 ? target : null;
+        if (this.mineableRock === next) return;
+        if (this.mineableRock?.isValid && this.mineableRock.node.isValid) this.mineableRock.setMineable(false);
+        this.mineableRock = next;
+        this.mineableRock?.setMineable(true);
     }
 
     private onBeat(active: number): void {
@@ -214,6 +240,9 @@ export class GameManager extends Component {
             bpm: MINE_TRACK.bpm,
             beatsPerBar: MINE_TRACK.beatsPerBar,
             inputOffsetMs: Math.round(MINE_TRACK.inputOffsetSeconds * 1000),
+            rockInRange: this.mineableRock !== null,
+            impactPending: this.impactPending,
+            rockHp: this.rocks.map((rock) => rock.remainingHp),
         };
     }
 
