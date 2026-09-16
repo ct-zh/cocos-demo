@@ -5,6 +5,8 @@ export enum BeatJudgement {
 }
 
 export interface BeatResult {
+    accepted: boolean;
+    targetBeatIndex: number;
     judgement: BeatJudgement;
     damage: number;
     distanceSeconds: number;

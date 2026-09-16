@@ -1,6 +1,7 @@
 import { _decorator, Color, Component, director, EventKeyboard, Graphics, input, Input, KeyCode, Node, profiler, tween, Vec3 } from 'cc';
 import { BeatManager } from './BeatManager';
 import { BeatJudgement } from './BeatTypes';
+import { CalibrationManager } from './CalibrationManager';
 import { AudioManager } from './AudioManager';
 import { MiningRock, MiningRockConfig } from './MiningRock';
 import { MINE_TRACK } from './MusicTrackConfig';
@@ -22,6 +23,7 @@ export class GameManager extends Component {
     private beat!: BeatManager;
     private audio!: AudioManager;
     private ui!: UIController;
+    private calibration!: CalibrationManager;
     private rocks: MiningRock[] = [];
     private ores: OrePickup[] = [];
     private combo = 0;
@@ -43,16 +45,20 @@ export class GameManager extends Component {
     private brokenRockCount = 0;
     private finalCrystalBroken = false;
     private collectingOres = 0;
+    private ignoredInputCount = 0;
+    private initialized = false;
 
     start(): void {
         profiler.hideStats();
         this.buildScene();
+        this.initialized = true;
         this.installDebugApi();
         this.publishDebugState();
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
     }
 
     update(): void {
+        if (!this.initialized) return;
         this.updateMineableRock();
         this.ores = this.ores.filter((ore) => ore.isValid && ore.node.isValid);
         for (const ore of this.ores) {
@@ -93,13 +99,18 @@ export class GameManager extends Component {
         const beatNode = new Node('BeatManager');
         this.node.addChild(beatNode);
         this.beat = beatNode.addComponent(BeatManager);
+        this.beat.initialize(MINE_TRACK, (active, beatIndex) => this.onBeat(active, beatIndex));
+        this.calibration = new CalibrationManager(
+            (view) => this.ui.showCalibration(view),
+            (offsetMs) => this.beat.setUserInputOffsetMilliseconds(offsetMs),
+        );
 
         const uiNode = new Node('UI');
         uiNode.layer = this.node.layer;
         this.node.addChild(uiNode);
         this.ui = uiNode.addComponent(UIController);
-        this.ui.initialize(MINE_TRACK.bpm);
-        this.beat.initialize(MINE_TRACK, (active) => this.onBeat(active));
+        this.ui.initialize(MINE_TRACK.bpm, (offsetMs) => this.calibration.setManualOffset(offsetMs));
+        this.calibration.initialize();
 
         const audioNode = new Node('AudioManager');
         this.node.addChild(audioNode);
@@ -112,10 +123,10 @@ export class GameManager extends Component {
         setPosition(playerNode, -510, -205);
         this.player = playerNode.addComponent(Player);
         this.player.initialize(() => this.tryMine(), () => ({
-            active: this.audio.musicPlaying,
+            active: this.audio?.musicPlaying ?? false,
             beatPosition: this.beat.beatPosition,
             tapCycleBeats: MINE_TRACK.visualRhythm.playerTapCycleBeats,
-        }));
+        }), () => !this.calibration.blocksGameplay);
 
         const rockPlan: RockPlan[] = [
             { x: -350, kind: 'normal', hp: 3, drops: 1 },
@@ -186,10 +197,23 @@ export class GameManager extends Component {
     }
 
     private tryMine(): SwingPlan {
-        if (this.completedSeconds !== null) return { impactHoldSeconds: 0, onImpact: () => undefined };
+        if (this.completedSeconds !== null) return { accepted: false, impactHoldSeconds: 0, onImpact: () => undefined };
+        if (this.calibration.isSampling) {
+            const measurement = this.beat.measureRawOffsetNow();
+            this.calibration.recordTap(measurement.targetBeatIndex, measurement.offsetSeconds);
+            return { accepted: false, impactHoldSeconds: 0, onImpact: () => undefined };
+        }
+        if (this.calibration.blocksGameplay) return { accepted: false, impactHoldSeconds: 0, onImpact: () => undefined };
+        const result = this.beat.judgeNow();
+        if (!result.accepted) {
+            this.ignoredInputCount++;
+            this.impactPending = false;
+            this.lastJudgement = 'TooFast';
+            this.ui.showTooFast();
+            return { accepted: false, impactHoldSeconds: 0, onImpact: () => undefined };
+        }
         if (this.firstSwingAt === null) this.firstSwingAt = performance.now();
         this.audio.playSwing();
-        const result = this.beat.judgeNow();
         const target = this.findMiningTarget();
         const inRange = target && Math.abs(target.node.position.x - this.player.miningPointX) <= 92;
         let judgement = result.judgement;
@@ -215,6 +239,7 @@ export class GameManager extends Component {
         this.impactPending = judgement !== BeatJudgement.Miss;
         const impactHoldSeconds = judgement === BeatJudgement.Perfect ? 0.03 : judgement === BeatJudgement.Good ? 0.012 : 0;
         return {
+            accepted: true,
             impactHoldSeconds,
             onImpact: () => {
                 this.impactPending = false;
@@ -242,8 +267,10 @@ export class GameManager extends Component {
         this.mineableRock?.setMineable(true);
     }
 
-    private onBeat(active: number): void {
+    private onBeat(active: number, beatIndex: number): void {
+        if (!this.ui || !this.calibration) return;
         this.ui.showBeat(active, this.perfectStreak);
+        this.calibration.onBeat(beatIndex);
     }
 
     private updateRhythmVisuals(): void {
@@ -274,6 +301,14 @@ export class GameManager extends Component {
     }
 
     private onKeyDown(event: EventKeyboard): void {
+        if (event.keyCode === KeyCode.KEY_C && this.calibration.toggleSettings()) return;
+        if (event.keyCode === KeyCode.ENTER && this.calibration.confirm()) return;
+        if (event.keyCode === KeyCode.ESCAPE && this.calibration.cancel()) return;
+        if (event.keyCode === KeyCode.KEY_T && this.calibration.startFromSettings()) return;
+        if (event.keyCode === KeyCode.DIGIT_0 && this.calibration.resetOffset()) return;
+        if (event.keyCode === KeyCode.ARROW_LEFT && this.calibration.adjustOffset(-5)) return;
+        if (event.keyCode === KeyCode.ARROW_RIGHT && this.calibration.adjustOffset(5)) return;
+        if (event.keyCode === KeyCode.KEY_R && this.calibration.retry()) return;
         if (event.keyCode === KeyCode.KEY_R && this.completedSeconds !== null) director.loadScene('Game');
     }
 
@@ -312,11 +347,16 @@ export class GameManager extends Component {
             musicTime: this.audio.musicTime,
             bpm: MINE_TRACK.bpm,
             beatsPerBar: MINE_TRACK.beatsPerBar,
-            inputOffsetMs: Math.round(MINE_TRACK.inputOffsetSeconds * 1000),
+            trackInputOffsetMs: Math.round(MINE_TRACK.inputOffsetSeconds * 1000),
+            userInputOffsetMs: this.calibration.currentOffsetMs,
+            effectiveInputOffsetMs: this.beat.effectiveInputOffsetMilliseconds,
+            calibration: this.calibration.debugState,
             beatPosition: Number(this.beat.beatPosition.toFixed(3)),
             worldRhythmScale: Number(this.rhythmRoot.scale.x.toFixed(4)),
             backgroundRhythmScale: Number(this.caveBackground.scale.x.toFixed(4)),
             playerTapCycleBeats: MINE_TRACK.visualRhythm.playerTapCycleBeats,
+            attemptedBeatIndex: this.beat.attemptedBeatIndex,
+            ignoredInputCount: this.ignoredInputCount,
             leftLegLift: Number(this.player.leftLegLift.toFixed(2)),
             rightLegLift: Number(this.player.rightLegLift.toFixed(2)),
             rockInRange: this.mineableRock !== null,

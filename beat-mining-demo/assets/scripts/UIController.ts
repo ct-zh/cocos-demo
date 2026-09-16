@@ -1,5 +1,7 @@
-import { _decorator, Color, Component, HorizontalTextAlignment, Label, Node, tween, UITransform, Vec3, VerticalTextAlignment } from 'cc';
+import { _decorator, Color, Component, Graphics, HorizontalTextAlignment, Label, Node, Slider, Sprite, tween, UITransform, Vec3, VerticalTextAlignment } from 'cc';
 import { BeatJudgement } from './BeatTypes';
+import { CalibrationView } from './CalibrationManager';
+import { fillRect, makeGraphicsNode } from './PixelArt';
 const { ccclass } = _decorator;
 
 @ccclass('UIController')
@@ -11,9 +13,20 @@ export class UIController extends Component {
     private stats!: Label;
     private help!: Label;
     private progress!: Label;
+    private offset!: Label;
     private beatDots: Label[] = [];
+    private calibrationOverlay!: Node;
+    private calibrationTitle!: Label;
+    private calibrationDetail!: Label;
+    private calibrationHint!: Label;
+    private calibrationValue!: Label;
+    private calibrationSliderNode!: Node;
+    private calibrationSlider!: Slider;
+    private calibrationOffsetChanged: ((offsetMs: number) => void) | null = null;
+    private syncingCalibrationSlider = false;
 
-    initialize(bpm: number): void {
+    initialize(bpm: number, onCalibrationOffsetChanged: (offsetMs: number) => void): void {
+        this.calibrationOffsetChanged = onCalibrationOffsetChanged;
         this.makeLabel('Title', 'BEAT MINER', 0, 310, 30, new Color(247, 209, 88));
         this.help = this.makeLabel('Help', `A / D 或 ← / → 移动    SPACE 挥镐    BPM ${bpm}`, 0, -325, 20, new Color(174, 183, 204));
         this.feedback = this.makeLabel('Feedback', '等待节拍…', 0, 210, 38, new Color(174, 183, 204));
@@ -21,8 +34,10 @@ export class UIController extends Component {
         this.combo = this.makeLabel('Combo', 'COMBO 0', -490, 292, 24, new Color(255, 178, 84));
         this.ore = this.makeLabel('Ore', 'ORE 0', 490, 292, 24, new Color(92, 230, 222));
         this.progress = this.makeLabel('Progress', '矿脉 0 / 6', 0, 292, 16, new Color(143, 151, 179));
+        this.offset = this.makeLabel('Offset', 'OFFSET +0 ms', 490, 252, 14, new Color(128, 139, 165));
         this.stats = this.makeLabel('Stats', 'P 0  G 0  M 0    MAX 0    AVG --', 0, -286, 16, new Color(116, 126, 151));
         for (let i = 0; i < 4; i++) this.beatDots.push(this.makeLabel(`Beat${i + 1}`, '■', -72 + i * 48, 260, 30, new Color(75, 74, 98)));
+        this.buildCalibrationOverlay();
     }
 
     showBeat(active: number, intensity: number): void {
@@ -43,6 +58,15 @@ export class UIController extends Component {
         const direction = milliseconds <= 5 ? 'ON BEAT' : offsetSeconds < 0 ? `EARLY ${milliseconds} ms` : `LATE ${milliseconds} ms`;
         this.timing.string = inRange ? direction : `OUT OF RANGE  ·  ${direction}`;
         this.timing.color = inRange ? colors[judgement] : new Color(239, 99, 110);
+    }
+
+    showTooFast(): void {
+        this.feedback.string = 'TOO FAST';
+        this.feedback.color = new Color(201, 151, 92);
+        this.feedback.node.setScale(1.12, 1.12, 1);
+        tween(this.feedback.node).to(0.1, { scale: Vec3.ONE }).start();
+        this.timing.string = '当前节拍已经挥镐';
+        this.timing.color = new Color(201, 151, 92);
     }
 
     updateStats(perfect: number, good: number, miss: number, maxCombo: number, averageAbsTimingMs: number): void {
@@ -77,11 +101,100 @@ export class UIController extends Component {
         tween(this.ore.node).to(0.14, { scale: Vec3.ONE }).start();
     }
 
-    private makeLabel(name: string, text: string, x: number, y: number, size: number, color: Color): Label {
+    showCalibration(view: CalibrationView): void {
+        this.offset.string = `OFFSET ${this.formatOffset(view.offsetMs)}`;
+        this.calibrationOverlay.active = view.mode !== 'hidden';
+        if (view.mode === 'hidden') return;
+        const nextProgress = (view.offsetMs + 300) / 600;
+        if (Math.abs(this.calibrationSlider.progress - nextProgress) > 0.0001) {
+            this.syncingCalibrationSlider = true;
+            this.calibrationSlider.progress = nextProgress;
+            this.syncingCalibrationSlider = false;
+        }
+        this.calibrationSliderNode.active = view.mode === 'settings';
+        this.calibrationValue.string = `当前补偿 ${this.formatOffset(view.offsetMs)}`;
+
+        if (view.mode === 'prompt') {
+            this.calibrationTitle.string = '输入延迟校准';
+            this.calibrationDetail.string = '跟随接下来的节拍声音按空格，自动测量浏览器与设备延迟';
+            this.calibrationHint.string = 'ENTER 开始校准    ESC 跳过    之后可按 C 重新设置';
+        } else if (view.mode === 'countIn') {
+            this.calibrationTitle.string = `准备  ${view.countInRemaining}`;
+            this.calibrationDetail.string = '先听四拍预备节奏';
+            this.calibrationHint.string = '接下来以听到的声音为准按 SPACE    ESC 取消';
+        } else if (view.mode === 'sampling') {
+            this.calibrationTitle.string = `校准 ${view.sampleIndex} / ${view.sampleTotal}`;
+            this.calibrationDetail.string = view.sampleCaptured ? '已记录，等待下一拍…' : '听到节拍时按 SPACE';
+            this.calibrationHint.string = `已采集 ${view.capturedCount} 次    ESC 取消`;
+        } else if (view.mode === 'result') {
+            this.calibrationTitle.string = view.resultMessage === '' ? '校准完成' : '校准未完成';
+            this.calibrationDetail.string = view.resultMessage === ''
+                ? `建议输入补偿 ${this.formatOffset(view.proposedOffsetMs)}`
+                : view.resultMessage;
+            this.calibrationHint.string = view.resultMessage === ''
+                ? 'ENTER 应用    R 重新校准    ESC 取消'
+                : 'R 重新校准    ESC 取消';
+        } else {
+            this.calibrationTitle.string = '节拍输入设置';
+            this.calibrationDetail.string = '经常显示 LATE 时增加正补偿，显示 EARLY 时使用负补偿';
+            this.calibrationHint.string = '拖动滑块或 ←/→ 微调    T 自动校准    0 重置    C/ESC 关闭';
+        }
+    }
+
+    private buildCalibrationOverlay(): void {
+        this.calibrationOverlay = new Node('CalibrationOverlay');
+        this.calibrationOverlay.layer = this.node.layer;
+        this.node.addChild(this.calibrationOverlay);
+        this.calibrationOverlay.addComponent(UITransform).setContentSize(1280, 720);
+
+        const shade = makeGraphicsNode('Shade', this.calibrationOverlay, 1280, 720);
+        fillRect(shade.getComponent(Graphics)!, new Color(4, 5, 12, 220), -640, -360, 1280, 720);
+        const panel = makeGraphicsNode('Panel', this.calibrationOverlay, 780, 360);
+        const panelGraphics = panel.getComponent(Graphics)!;
+        fillRect(panelGraphics, new Color(24, 25, 43, 250), -390, -180, 780, 360);
+        fillRect(panelGraphics, new Color(92, 230, 222), -390, 174, 780, 6);
+
+        this.calibrationTitle = this.makeLabel('CalibrationTitle', '输入延迟校准', 0, 112, 34, new Color(255, 221, 92), this.calibrationOverlay);
+        this.calibrationDetail = this.makeLabel('CalibrationDetail', '', 0, 48, 20, new Color(210, 217, 235), this.calibrationOverlay);
+        this.calibrationValue = this.makeLabel('CalibrationValue', '当前补偿 +0 ms', 0, -8, 25, new Color(92, 230, 222), this.calibrationOverlay);
+        this.calibrationHint = this.makeLabel('CalibrationHint', '', 0, -124, 17, new Color(151, 161, 188), this.calibrationOverlay);
+
+        this.calibrationSliderNode = makeGraphicsNode('CalibrationSlider', this.calibrationOverlay, 560, 44);
+        this.calibrationSliderNode.setPosition(0, -64);
+        const trackGraphics = this.calibrationSliderNode.getComponent(Graphics)!;
+        fillRect(trackGraphics, new Color(65, 69, 91), -270, -4, 540, 8);
+        fillRect(trackGraphics, new Color(112, 120, 151), -2, -12, 4, 24);
+        const handle = new Node('Handle');
+        handle.layer = this.calibrationSliderNode.layer;
+        this.calibrationSliderNode.addChild(handle);
+        handle.addComponent(UITransform).setContentSize(26, 38);
+        const handleVisual = makeGraphicsNode('HandleVisual', handle, 26, 38);
+        const handleGraphics = handleVisual.getComponent(Graphics)!;
+        fillRect(handleGraphics, new Color(255, 221, 92), -11, -17, 22, 34);
+        this.calibrationSlider = this.calibrationSliderNode.addComponent(Slider);
+        this.calibrationSlider.handle = handle.addComponent(Sprite);
+        this.calibrationSlider.progress = 0.5;
+        this.calibrationSliderNode.on('slide', this.onCalibrationSlide, this);
+        this.calibrationOverlay.active = false;
+    }
+
+    private onCalibrationSlide(): void {
+        if (this.syncingCalibrationSlider) return;
+        const rawOffset = -300 + this.calibrationSlider.progress * 600;
+        const offsetMs = Math.round(rawOffset / 5) * 5;
+        this.calibrationValue.string = `当前补偿 ${this.formatOffset(offsetMs)}`;
+        this.calibrationOffsetChanged?.(offsetMs);
+    }
+
+    private formatOffset(offsetMs: number): string {
+        return `${offsetMs >= 0 ? '+' : ''}${offsetMs} ms`;
+    }
+
+    private makeLabel(name: string, text: string, x: number, y: number, size: number, color: Color, parent: Node = this.node): Label {
         const node = new Node(name);
-        node.layer = this.node.layer;
+        node.layer = parent.layer;
         node.setPosition(x, y);
-        this.node.addChild(node);
+        parent.addChild(node);
         node.addComponent(UITransform).setContentSize(640, size + 12);
         const label = node.addComponent(Label);
         label.string = text;

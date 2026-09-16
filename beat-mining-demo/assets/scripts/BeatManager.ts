@@ -9,14 +9,16 @@ export class BeatManager extends Component {
     private beatsPerBar = 4;
     private beatOffsetSeconds = 0;
     private inputOffsetSeconds = 0;
+    private userInputOffsetSeconds = 0;
     private perfectWindowSeconds = 0.075;
     private goodWindowSeconds = 0.18;
     private startedAt = 0;
     private lastBeatIndex = -1;
-    private onBeatCallback: ((beatInBar: number) => void) | null = null;
+    private lastAttemptedBeatIndex = Number.MIN_SAFE_INTEGER;
+    private onBeatCallback: ((beatInBar: number, beatIndex: number) => void) | null = null;
     private musicClock: (() => number) | null = null;
 
-    initialize(track: Readonly<MusicTrackConfig>, onBeat: (beatInBar: number) => void): void {
+    initialize(track: Readonly<MusicTrackConfig>, onBeat: (beatInBar: number, beatIndex: number) => void): void {
         this.bpm = track.bpm;
         this.beatsPerBar = track.beatsPerBar;
         this.beatOffsetSeconds = track.beatOffsetSeconds;
@@ -31,37 +33,61 @@ export class BeatManager extends Component {
         this.musicClock = null;
         this.startedAt = performance.now() / 1000;
         this.lastBeatIndex = -1;
+        this.lastAttemptedBeatIndex = Number.MIN_SAFE_INTEGER;
     }
 
     synchronizeToMusic(clock: () => number): void {
         this.musicClock = clock;
         this.lastBeatIndex = -1;
+        this.lastAttemptedBeatIndex = Number.MIN_SAFE_INTEGER;
     }
 
     update(): void {
         const beatIndex = Math.floor(this.elapsed() / this.beatDuration);
         if (beatIndex !== this.lastBeatIndex) {
             this.lastBeatIndex = beatIndex;
-            this.onBeatCallback?.(beatIndex % this.beatsPerBar);
+            this.onBeatCallback?.(beatIndex % this.beatsPerBar, beatIndex);
         }
     }
 
     judgeNow(): BeatResult {
-        const judgedTime = this.elapsed() - this.inputOffsetSeconds;
-        const phase = ((judgedTime % this.beatDuration) + this.beatDuration) % this.beatDuration;
-        const offset = phase <= this.beatDuration / 2 ? phase : phase - this.beatDuration;
+        const judgedTime = this.elapsed() - this.effectiveInputOffsetSeconds;
+        const targetBeatIndex = Math.round(judgedTime / this.beatDuration);
+        const offset = judgedTime - targetBeatIndex * this.beatDuration;
         const distance = Math.abs(offset);
-        if (distance <= this.perfectWindowSeconds) return { judgement: BeatJudgement.Perfect, damage: 2, distanceSeconds: distance, offsetSeconds: offset };
-        if (distance <= this.goodWindowSeconds) return { judgement: BeatJudgement.Good, damage: 1, distanceSeconds: distance, offsetSeconds: offset };
-        return { judgement: BeatJudgement.Miss, damage: 0, distanceSeconds: distance, offsetSeconds: offset };
+        if (targetBeatIndex === this.lastAttemptedBeatIndex) {
+            return { accepted: false, targetBeatIndex, judgement: BeatJudgement.Miss, damage: 0, distanceSeconds: distance, offsetSeconds: offset };
+        }
+        this.lastAttemptedBeatIndex = targetBeatIndex;
+        if (distance <= this.perfectWindowSeconds) return { accepted: true, targetBeatIndex, judgement: BeatJudgement.Perfect, damage: 2, distanceSeconds: distance, offsetSeconds: offset };
+        if (distance <= this.goodWindowSeconds) return { accepted: true, targetBeatIndex, judgement: BeatJudgement.Good, damage: 1, distanceSeconds: distance, offsetSeconds: offset };
+        return { accepted: true, targetBeatIndex, judgement: BeatJudgement.Miss, damage: 0, distanceSeconds: distance, offsetSeconds: offset };
     }
 
     get beatDuration(): number { return 60 / this.bpm; }
     get progress(): number { return (this.elapsed() % this.beatDuration) / this.beatDuration; }
     get beatPosition(): number { return this.elapsed() / this.beatDuration; }
+    get attemptedBeatIndex(): number | null {
+        return this.lastAttemptedBeatIndex === Number.MIN_SAFE_INTEGER ? null : this.lastAttemptedBeatIndex;
+    }
+    get effectiveInputOffsetMilliseconds(): number { return Math.round(this.effectiveInputOffsetSeconds * 1000); }
+
+    setUserInputOffsetMilliseconds(offsetMs: number): void {
+        this.userInputOffsetSeconds = offsetMs / 1000;
+    }
+
+    measureRawOffsetNow(): { targetBeatIndex: number; offsetSeconds: number } {
+        const measuredTime = this.elapsed() - this.inputOffsetSeconds;
+        const targetBeatIndex = Math.round(measuredTime / this.beatDuration);
+        return { targetBeatIndex, offsetSeconds: measuredTime - targetBeatIndex * this.beatDuration };
+    }
 
     private elapsed(): number {
         const rawTime = this.musicClock ? this.musicClock() : performance.now() / 1000 - this.startedAt;
         return Math.max(0, rawTime - this.beatOffsetSeconds);
+    }
+
+    private get effectiveInputOffsetSeconds(): number {
+        return this.inputOffsetSeconds + this.userInputOffsetSeconds;
     }
 }

@@ -24,8 +24,8 @@ export const MINE_TRACK: Readonly<MusicTrackConfig> = {
     beatsPerBar: 4,
     beatOffsetSeconds: 0,
     inputOffsetSeconds: 0,
-    perfectWindowSeconds: 0.075,
-    goodWindowSeconds: 0.18,
+    perfectWindowSeconds: 0.06,
+    goodWindowSeconds: 0.13,
     visualRhythm: {
         playerTapCycleBeats: 1,
         backgroundBreathCycleBeats: 4,

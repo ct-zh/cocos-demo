@@ -10,6 +10,7 @@ export class Player extends Component {
     private swinging = false;
     private requestMine: (() => SwingPlan) | null = null;
     private rhythmClock: (() => PlayerRhythmState) | null = null;
+    private canControl: (() => boolean) | null = null;
     private bodyNode!: Node;
     private body!: Graphics;
     private leftLeg!: Node;
@@ -21,16 +22,17 @@ export class Player extends Component {
     private readonly initialMoveSpeed = 120;
     private velocityX = 0;
 
-    initialize(requestMine: () => SwingPlan, rhythmClock: () => PlayerRhythmState): void {
+    initialize(requestMine: () => SwingPlan, rhythmClock: () => PlayerRhythmState, canControl: () => boolean): void {
         this.requestMine = requestMine;
         this.rhythmClock = rhythmClock;
+        this.canControl = canControl;
         this.draw();
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         input.on(Input.EventType.KEY_UP, this.onKeyUp, this);
     }
 
     update(dt: number): void {
-        const direction = (this.rightDown ? 1 : 0) - (this.leftDown ? 1 : 0);
+        const direction = this.canControl?.() === false ? 0 : (this.rightDown ? 1 : 0) - (this.leftDown ? 1 : 0);
         if (direction !== 0) {
             this.facing = direction;
             this.updateFacingVisual();
@@ -50,10 +52,18 @@ export class Player extends Component {
     get rightLegLift(): number { return this.rightLeg.position.y + 43; }
 
     swing(): void {
+        const plan = this.requestMine?.() ?? { accepted: false, impactHoldSeconds: 0, onImpact: () => undefined };
         if (this.swinging) return;
         this.swinging = true;
-        const plan = this.requestMine?.() ?? { impactHoldSeconds: 0, onImpact: () => undefined };
         this.updateFacingVisual();
+        if (!plan.accepted) {
+            tween(this.pickaxe)
+                .to(0.04, { angle: -8 * this.facing })
+                .to(0.07, { angle: 0 })
+                .call(() => { this.swinging = false; })
+                .start();
+            return;
+        }
         tween(this.node)
             .to(0.04, { scale: new Vec3(0.96, 1.04, 1) })
             .to(0.08, { scale: new Vec3(1.03, 0.97, 1) })
@@ -75,6 +85,11 @@ export class Player extends Component {
     }
 
     private onKeyDown(event: EventKeyboard): void {
+        if (event.keyCode === KeyCode.SPACE && this.canControl?.() === false) {
+            this.requestMine?.();
+            return;
+        }
+        if (this.canControl?.() === false) return;
         if ((event.keyCode === KeyCode.KEY_A || event.keyCode === KeyCode.ARROW_LEFT) && !this.leftDown) {
             this.leftDown = true;
             this.velocityX = Math.min(this.velocityX, -this.initialMoveSpeed);
@@ -155,6 +170,7 @@ export interface PlayerRhythmState {
 }
 
 export interface SwingPlan {
+    accepted: boolean;
     impactHoldSeconds: number;
     onImpact: () => void;
 }
