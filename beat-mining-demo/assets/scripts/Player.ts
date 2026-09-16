@@ -9,7 +9,11 @@ export class Player extends Component {
     private facing = 1;
     private swinging = false;
     private requestMine: (() => SwingPlan) | null = null;
+    private rhythmClock: (() => PlayerRhythmState) | null = null;
+    private bodyNode!: Node;
     private body!: Graphics;
+    private leftLeg!: Node;
+    private rightLeg!: Node;
     private pickaxe!: Node;
     private readonly speed = 260;
     private readonly acceleration = 2400;
@@ -17,8 +21,9 @@ export class Player extends Component {
     private readonly initialMoveSpeed = 120;
     private velocityX = 0;
 
-    initialize(requestMine: () => SwingPlan): void {
+    initialize(requestMine: () => SwingPlan, rhythmClock: () => PlayerRhythmState): void {
         this.requestMine = requestMine;
+        this.rhythmClock = rhythmClock;
         this.draw();
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         input.on(Input.EventType.KEY_UP, this.onKeyUp, this);
@@ -36,10 +41,13 @@ export class Player extends Component {
         const nextX = Math.max(-540, Math.min(540, this.node.position.x + this.velocityX * dt));
         if (nextX === -540 || nextX === 540) this.velocityX = 0;
         this.node.setPosition(nextX, this.node.position.y, 0);
+        this.updateRhythmVisuals();
     }
 
     get miningPointX(): number { return this.node.position.x + this.facing * 72; }
     get worldX(): number { return this.node.position.x; }
+    get leftLegLift(): number { return this.leftLeg.position.y + 43; }
+    get rightLegLift(): number { return this.rightLeg.position.y + 43; }
 
     swing(): void {
         if (this.swinging) return;
@@ -94,8 +102,20 @@ export class Player extends Component {
     }
 
     private draw(): void {
-        const bodyNode = makeGraphicsNode('Body', this.node, 54, 82);
-        this.body = bodyNode.getComponent(Graphics)!;
+        this.leftLeg = makeGraphicsNode('LeftLeg', this.node, 16, 22);
+        this.leftLeg.setPosition(-11, -43);
+        const leftLegGraphics = this.leftLeg.getComponent(Graphics)!;
+        fillRect(leftLegGraphics, new Color(32, 25, 35), -6, -10, 12, 20);
+        fillRect(leftLegGraphics, new Color(90, 155, 173), -6, -10, 12, 7);
+
+        this.rightLeg = makeGraphicsNode('RightLeg', this.node, 16, 22);
+        this.rightLeg.setPosition(11, -43);
+        const rightLegGraphics = this.rightLeg.getComponent(Graphics)!;
+        fillRect(rightLegGraphics, new Color(32, 25, 35), -6, -10, 12, 20);
+        fillRect(rightLegGraphics, new Color(90, 155, 173), -6, -10, 12, 7);
+
+        this.bodyNode = makeGraphicsNode('Body', this.node, 54, 82);
+        this.body = this.bodyNode.getComponent(Graphics)!;
         fillRect(this.body, new Color(32, 25, 35), -22, -36, 44, 48);
         fillRect(this.body, new Color(226, 151, 87), -17, 12, 34, 28);
         fillRect(this.body, new Color(230, 184, 58), -24, 35, 48, 11);
@@ -109,6 +129,29 @@ export class Player extends Component {
         fillRect(g, new Color(185, 201, 204), -28, 23, 56, 8);
     }
 
+    private updateRhythmVisuals(): void {
+        const rhythm = this.rhythmClock?.();
+        if (!rhythm?.active) {
+            this.leftLeg.setPosition(-11, -43);
+            this.rightLeg.setPosition(11, -43);
+            this.bodyNode.setPosition(0, 0);
+            return;
+        }
+        const cycle = rhythm.beatPosition / rhythm.tapCycleBeats;
+        const wave = Math.sin(cycle * Math.PI * 2);
+        const leftLift = Math.max(0, wave) * 5;
+        const rightLift = Math.max(0, -wave) * 5;
+        this.leftLeg.setPosition(-11, -43 + leftLift);
+        this.rightLeg.setPosition(11, -43 + rightLift);
+        this.bodyNode.setPosition(0, Math.abs(wave) * 1.5);
+    }
+
+}
+
+export interface PlayerRhythmState {
+    active: boolean;
+    beatPosition: number;
+    tapCycleBeats: number;
 }
 
 export interface SwingPlan {

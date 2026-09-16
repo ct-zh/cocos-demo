@@ -1,3 +1,12 @@
+export interface MusicVisualRhythmConfig {
+    playerTapCycleBeats: number;
+    backgroundBreathCycleBeats: number;
+    backgroundBreathScale: number;
+    worldPulseScale: number;
+    downbeatMultiplier: number;
+    perfectStreakPulseScale: number;
+}
+
 export interface MusicTrackConfig {
     resourcePath: string;
     bpm: number;
@@ -6,6 +15,7 @@ export interface MusicTrackConfig {
     inputOffsetSeconds: number;
     perfectWindowSeconds: number;
     goodWindowSeconds: number;
+    visualRhythm: MusicVisualRhythmConfig;
 }
 
 export const MINE_TRACK: Readonly<MusicTrackConfig> = {
@@ -16,4 +26,12 @@ export const MINE_TRACK: Readonly<MusicTrackConfig> = {
     inputOffsetSeconds: 0,
     perfectWindowSeconds: 0.075,
     goodWindowSeconds: 0.18,
+    visualRhythm: {
+        playerTapCycleBeats: 1,
+        backgroundBreathCycleBeats: 4,
+        backgroundBreathScale: 0.006,
+        worldPulseScale: 0.0035,
+        downbeatMultiplier: 1.45,
+        perfectStreakPulseScale: 0.0015,
+    },
 };

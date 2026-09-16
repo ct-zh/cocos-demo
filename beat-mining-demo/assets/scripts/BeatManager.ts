@@ -58,6 +58,7 @@ export class BeatManager extends Component {
 
     get beatDuration(): number { return 60 / this.bpm; }
     get progress(): number { return (this.elapsed() % this.beatDuration) / this.beatDuration; }
+    get beatPosition(): number { return this.elapsed() / this.beatDuration; }
 
     private elapsed(): number {
         const rawTime = this.musicClock ? this.musicClock() : performance.now() / 1000 - this.startedAt;
