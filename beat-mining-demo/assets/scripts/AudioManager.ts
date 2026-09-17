@@ -11,6 +11,8 @@ export class AudioManager extends Component {
     private bgm: AudioClip | null = null;
     private sounds = new Map<SoundName, AudioClip>();
     private userInteracted = false;
+    private calibrationActive = false;
+    private calibrationAudioContext: AudioContext | null = null;
     private onMusicStarted: (() => void) | null = null;
 
     initialize(track: Readonly<MusicTrackConfig>, onMusicStarted: () => void): void {
@@ -42,6 +44,45 @@ export class AudioManager extends Component {
     playRockBreak(): void { this.play('rock_break', 0.72); }
     playCollect(): void { this.play('collect', 0.78); }
 
+    beginCalibration(): void {
+        this.calibrationActive = true;
+        if (this.bgmSource?.playing) this.bgmSource.stop();
+        this.prepareCalibrationAudio();
+    }
+
+    endCalibration(): void {
+        this.calibrationActive = false;
+        this.tryStartMusic();
+    }
+
+    playCalibrationBeep(): void {
+        try {
+            this.prepareCalibrationAudio();
+            if (!this.calibrationAudioContext) return;
+            const context = this.calibrationAudioContext;
+            const oscillator = context.createOscillator();
+            const gain = context.createGain();
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, context.currentTime);
+            gain.gain.setValueAtTime(0.0001, context.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.18, context.currentTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.09);
+            oscillator.connect(gain);
+            gain.connect(context.destination);
+            oscillator.start(context.currentTime);
+            oscillator.stop(context.currentTime + 0.1);
+        } catch {}
+    }
+
+    private prepareCalibrationAudio(): void {
+        try {
+            const AudioContextClass = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+            if (!AudioContextClass) return;
+            this.calibrationAudioContext ??= new AudioContextClass();
+            if (this.calibrationAudioContext.state === 'suspended') void this.calibrationAudioContext.resume();
+        } catch {}
+    }
+
     protected onDestroy(): void {
         input.off(Input.EventType.KEY_DOWN, this.onFirstInput, this);
     }
@@ -60,7 +101,7 @@ export class AudioManager extends Component {
     }
 
     private tryStartMusic(): void {
-        if (!this.userInteracted || !this.bgm || this.bgmSource.playing) return;
+        if (!this.userInteracted || this.calibrationActive || !this.bgm || this.bgmSource.playing) return;
         this.bgmSource.clip = this.bgm;
         this.bgmSource.play();
         this.onMusicStarted?.();

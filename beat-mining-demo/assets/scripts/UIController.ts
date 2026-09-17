@@ -1,4 +1,4 @@
-import { _decorator, Color, Component, Graphics, HorizontalTextAlignment, Label, Node, Slider, Sprite, tween, UITransform, Vec3, VerticalTextAlignment } from 'cc';
+import { _decorator, Button, Color, Component, Graphics, HorizontalTextAlignment, Label, Node, Slider, Sprite, tween, UITransform, Vec3, VerticalTextAlignment } from 'cc';
 import { BeatJudgement } from './BeatTypes';
 import { CalibrationView } from './CalibrationManager';
 import { fillRect, makeGraphicsNode } from './PixelArt';
@@ -22,11 +22,14 @@ export class UIController extends Component {
     private calibrationValue!: Label;
     private calibrationSliderNode!: Node;
     private calibrationSlider!: Slider;
+    private calibrationStartButton!: Node;
     private calibrationOffsetChanged: ((offsetMs: number) => void) | null = null;
+    private calibrationStartRequested: (() => void) | null = null;
     private syncingCalibrationSlider = false;
 
-    initialize(bpm: number, onCalibrationOffsetChanged: (offsetMs: number) => void): void {
+    initialize(bpm: number, onCalibrationOffsetChanged: (offsetMs: number) => void, onCalibrationStartRequested: () => void): void {
         this.calibrationOffsetChanged = onCalibrationOffsetChanged;
+        this.calibrationStartRequested = onCalibrationStartRequested;
         this.makeLabel('Title', 'BEAT MINER', 0, 310, 30, new Color(247, 209, 88));
         this.help = this.makeLabel('Help', `A / D 或 ← / → 移动    SPACE 挥镐    BPM ${bpm}`, 0, -325, 20, new Color(174, 183, 204));
         this.feedback = this.makeLabel('Feedback', '等待节拍…', 0, 210, 38, new Color(174, 183, 204));
@@ -112,20 +115,21 @@ export class UIController extends Component {
             this.syncingCalibrationSlider = false;
         }
         this.calibrationSliderNode.active = view.mode === 'settings';
+        this.calibrationStartButton.active = view.mode === 'settings';
         this.calibrationValue.string = `当前补偿 ${this.formatOffset(view.offsetMs)}`;
 
         if (view.mode === 'prompt') {
             this.calibrationTitle.string = '输入延迟校准';
-            this.calibrationDetail.string = '跟随接下来的节拍声音按空格，自动测量浏览器与设备延迟';
+            this.calibrationDetail.string = '听到“滴”声后按 SPACE，共 4 次';
             this.calibrationHint.string = 'ENTER 开始校准    ESC 跳过    之后可按 C 重新设置';
         } else if (view.mode === 'countIn') {
             this.calibrationTitle.string = `准备  ${view.countInRemaining}`;
-            this.calibrationDetail.string = '先听四拍预备节奏';
-            this.calibrationHint.string = '接下来以听到的声音为准按 SPACE    ESC 取消';
+            this.calibrationDetail.string = '即将播放独立的“滴”声提示';
+            this.calibrationHint.string = '每次听到滴声后按 SPACE    ESC 取消';
         } else if (view.mode === 'sampling') {
             this.calibrationTitle.string = `校准 ${view.sampleIndex} / ${view.sampleTotal}`;
-            this.calibrationDetail.string = view.sampleCaptured ? '已记录，等待下一拍…' : '听到节拍时按 SPACE';
-            this.calibrationHint.string = `已采集 ${view.capturedCount} 次    ESC 取消`;
+            this.calibrationDetail.string = view.sampleCaptured ? '已记录，等待下一声滴声…' : '听到滴声后按 SPACE';
+            this.calibrationHint.string = `已采集 ${view.capturedCount} / ${view.sampleTotal} 次    ESC 取消`;
         } else if (view.mode === 'result') {
             this.calibrationTitle.string = view.resultMessage === '' ? '校准完成' : '校准未完成';
             this.calibrationDetail.string = view.resultMessage === ''
@@ -135,9 +139,9 @@ export class UIController extends Component {
                 ? 'ENTER 应用    R 重新校准    ESC 取消'
                 : 'R 重新校准    ESC 取消';
         } else {
-            this.calibrationTitle.string = '节拍输入设置';
-            this.calibrationDetail.string = '经常显示 LATE 时增加正补偿，显示 EARLY 时使用负补偿';
-            this.calibrationHint.string = '拖动滑块或 ←/→ 微调    T 自动校准    0 重置    C/ESC 关闭';
+            this.calibrationTitle.string = '设置';
+            this.calibrationDetail.string = '节拍输入设置';
+            this.calibrationHint.string = '拖动滑块或 ←/→ 微调    T 开始校准    0 重置    C/ESC 关闭';
         }
     }
 
@@ -155,12 +159,14 @@ export class UIController extends Component {
         fillRect(panelGraphics, new Color(92, 230, 222), -390, 174, 780, 6);
 
         this.calibrationTitle = this.makeLabel('CalibrationTitle', '输入延迟校准', 0, 112, 34, new Color(255, 221, 92), this.calibrationOverlay);
-        this.calibrationDetail = this.makeLabel('CalibrationDetail', '', 0, 48, 20, new Color(210, 217, 235), this.calibrationOverlay);
+        this.calibrationDetail = this.makeLabel('CalibrationDetail', '', 0, 56, 20, new Color(210, 217, 235), this.calibrationOverlay);
         this.calibrationValue = this.makeLabel('CalibrationValue', '当前补偿 +0 ms', 0, -8, 25, new Color(92, 230, 222), this.calibrationOverlay);
         this.calibrationHint = this.makeLabel('CalibrationHint', '', 0, -124, 17, new Color(151, 161, 188), this.calibrationOverlay);
 
+        this.calibrationStartButton = this.buildCalibrationStartButton();
+
         this.calibrationSliderNode = makeGraphicsNode('CalibrationSlider', this.calibrationOverlay, 560, 44);
-        this.calibrationSliderNode.setPosition(0, -64);
+        this.calibrationSliderNode.setPosition(0, -70);
         const trackGraphics = this.calibrationSliderNode.getComponent(Graphics)!;
         fillRect(trackGraphics, new Color(65, 69, 91), -270, -4, 540, 8);
         fillRect(trackGraphics, new Color(112, 120, 151), -2, -12, 4, 24);
@@ -178,12 +184,29 @@ export class UIController extends Component {
         this.calibrationOverlay.active = false;
     }
 
+    private buildCalibrationStartButton(): Node {
+        const buttonNode = makeGraphicsNode('StartInputCalibration', this.calibrationOverlay, 260, 42);
+        buttonNode.setPosition(0, 20);
+        const graphics = buttonNode.getComponent(Graphics)!;
+        fillRect(graphics, new Color(92, 230, 222), -130, -21, 260, 42);
+        fillRect(graphics, new Color(24, 25, 43), -126, -17, 252, 34);
+        const label = this.makeLabel('Label', '开始输入校准', 0, 0, 19, new Color(255, 221, 92), buttonNode);
+        label.node.getComponent(UITransform)!.setContentSize(252, 34);
+        buttonNode.addComponent(Button);
+        buttonNode.on(Button.EventType.CLICK, this.onCalibrationStartClick, this);
+        return buttonNode;
+    }
+
     private onCalibrationSlide(): void {
         if (this.syncingCalibrationSlider) return;
         const rawOffset = -300 + this.calibrationSlider.progress * 600;
         const offsetMs = Math.round(rawOffset / 5) * 5;
         this.calibrationValue.string = `当前补偿 ${this.formatOffset(offsetMs)}`;
         this.calibrationOffsetChanged?.(offsetMs);
+    }
+
+    private onCalibrationStartClick(): void {
+        this.calibrationStartRequested?.();
     }
 
     private formatOffset(offsetMs: number): string {

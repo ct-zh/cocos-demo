@@ -14,16 +14,17 @@ export interface CalibrationView {
 
 const OFFSET_STORAGE_KEY = 'beatMiningInputOffsetMs';
 const SEEN_STORAGE_KEY = 'beatMiningCalibrationSeen';
-const SAMPLE_TOTAL = 12;
-const COUNT_IN_BEATS = 4;
+const SAMPLE_TOTAL = 4;
+const COUNT_IN_SECONDS = 2;
+const CUE_INTERVAL_MS = 1000;
+const CAPTURE_WINDOW_MS = 850;
 
 export class CalibrationManager {
     private mode: CalibrationMode = 'hidden';
     private offsetMs = 0;
-    private countInStartBeat: number | null = null;
-    private countInElapsed = 0;
-    private samplingStartBeat: number | null = null;
-    private currentCueBeat: number | null = null;
+    private countInEndsAtMs: number | null = null;
+    private cueStartedAtMs: number | null = null;
+    private nextCueAtMs: number | null = null;
     private currentSampleIndex = 0;
     private currentSampleCaptured = false;
     private samplesSeconds: number[] = [];
@@ -33,6 +34,8 @@ export class CalibrationManager {
     constructor(
         private readonly onViewChanged: (view: CalibrationView) => void,
         private readonly onOffsetChanged: (offsetMs: number) => void,
+        private readonly onCue: () => void,
+        private readonly onSessionChanged: (active: boolean) => void,
     ) {}
 
     initialize(): void {
@@ -57,6 +60,28 @@ export class CalibrationManager {
         };
     }
 
+    update(nowMs: number): void {
+        if (this.mode === 'countIn' && this.countInEndsAtMs !== null) {
+            if (nowMs >= this.countInEndsAtMs) {
+                this.mode = 'sampling';
+                this.currentSampleIndex = 1;
+                this.playCue(nowMs);
+            } else {
+                this.emit();
+            }
+            return;
+        }
+        if (this.mode !== 'sampling' || this.nextCueAtMs === null || nowMs < this.nextCueAtMs) return;
+        if (this.currentSampleCaptured) {
+            if (this.currentSampleIndex >= SAMPLE_TOTAL) {
+                this.finishCalibration();
+                return;
+            }
+            this.currentSampleIndex++;
+        }
+        this.playCue(nowMs);
+    }
+
     toggleSettings(): boolean {
         if (this.mode === 'hidden') {
             this.mode = 'settings';
@@ -79,9 +104,7 @@ export class CalibrationManager {
         }
         if (this.mode === 'result' && this.resultMessage === '') {
             this.setOffset(this.proposedOffsetMs);
-            this.markSeen();
-            this.mode = 'hidden';
-            this.emit();
+            this.closeCalibration();
             return true;
         }
         return false;
@@ -89,6 +112,10 @@ export class CalibrationManager {
 
     cancel(): boolean {
         if (this.mode === 'hidden') return false;
+        if (this.mode === 'countIn' || this.mode === 'sampling' || this.mode === 'result') {
+            this.closeCalibration();
+            return true;
+        }
         this.markSeen();
         this.mode = 'hidden';
         this.emit();
@@ -124,72 +151,60 @@ export class CalibrationManager {
         this.setOffset(offsetMs);
     }
 
-    onBeat(beatIndex: number): void {
-        if (this.mode === 'countIn') {
-            if (this.countInStartBeat === null) this.countInStartBeat = beatIndex;
-            const elapsed = beatIndex - this.countInStartBeat;
-            this.countInElapsed = elapsed;
-            if (elapsed < COUNT_IN_BEATS) {
-                this.emit();
-                return;
-            }
-            this.mode = 'sampling';
-            this.samplingStartBeat = beatIndex;
-            this.setCurrentCue(beatIndex, 1);
-            return;
-        }
-        if (this.mode !== 'sampling' || this.samplingStartBeat === null) return;
-        const sampleIndex = beatIndex - this.samplingStartBeat + 1;
-        if (sampleIndex > SAMPLE_TOTAL) {
-            this.finishCalibration();
-            return;
-        }
-        this.setCurrentCue(beatIndex, sampleIndex);
-    }
-
-    recordTap(targetBeatIndex: number, offsetSeconds: number): boolean {
-        if (this.mode !== 'sampling' || this.currentCueBeat !== targetBeatIndex || this.currentSampleCaptured) return false;
+    recordTap(nowMs: number): boolean {
+        if (this.mode !== 'sampling' || this.cueStartedAtMs === null || this.currentSampleCaptured) return false;
+        const elapsedMs = nowMs - this.cueStartedAtMs;
+        if (elapsedMs < 0 || elapsedMs > CAPTURE_WINDOW_MS) return false;
         this.currentSampleCaptured = true;
-        this.samplesSeconds.push(offsetSeconds);
+        this.samplesSeconds.push(elapsedMs / 1000);
         this.emit();
         return true;
     }
 
     private startCalibration(): void {
         this.mode = 'countIn';
-        this.countInStartBeat = null;
-        this.countInElapsed = 0;
-        this.samplingStartBeat = null;
-        this.currentCueBeat = null;
+        this.countInEndsAtMs = performance.now() + COUNT_IN_SECONDS * 1000;
+        this.cueStartedAtMs = null;
+        this.nextCueAtMs = null;
         this.currentSampleIndex = 0;
         this.currentSampleCaptured = false;
         this.samplesSeconds = [];
         this.proposedOffsetMs = this.offsetMs;
         this.resultMessage = '';
+        this.onSessionChanged(true);
         this.emit();
     }
 
-    private setCurrentCue(beatIndex: number, sampleIndex: number): void {
-        if (this.currentCueBeat === beatIndex) return;
-        this.currentCueBeat = beatIndex;
-        this.currentSampleIndex = sampleIndex;
+    private playCue(nowMs: number): void {
+        this.cueStartedAtMs = nowMs;
+        this.nextCueAtMs = nowMs + CUE_INTERVAL_MS;
         this.currentSampleCaptured = false;
+        this.onCue();
         this.emit();
     }
 
     private finishCalibration(): void {
         this.mode = 'result';
-        if (this.samplesSeconds.length < 6) {
+        if (this.samplesSeconds.length !== SAMPLE_TOTAL) {
             this.resultMessage = `有效输入不足（${this.samplesSeconds.length}/${SAMPLE_TOTAL}）`;
             this.emit();
             return;
         }
         const sortedMs = this.samplesSeconds.map((seconds) => seconds * 1000).sort((a, b) => a - b);
-        const trimmed = sortedMs.length >= 10 ? sortedMs.slice(1, -1) : sortedMs;
-        const middle = Math.floor(trimmed.length / 2);
-        const median = trimmed.length % 2 === 0 ? (trimmed[middle - 1] + trimmed[middle]) / 2 : trimmed[middle];
+        const middle = Math.floor(sortedMs.length / 2);
+        const median = (sortedMs[middle - 1] + sortedMs[middle]) / 2;
         this.proposedOffsetMs = this.normalizeOffset(median);
         this.resultMessage = '';
+        this.emit();
+    }
+
+    private closeCalibration(): void {
+        this.markSeen();
+        this.mode = 'hidden';
+        this.countInEndsAtMs = null;
+        this.cueStartedAtMs = null;
+        this.nextCueAtMs = null;
+        this.onSessionChanged(false);
         this.emit();
     }
 
@@ -222,7 +237,9 @@ export class CalibrationManager {
     }
 
     private emit(): void {
-        const countInRemaining = this.mode === 'countIn' ? Math.max(1, COUNT_IN_BEATS - this.countInElapsed) : COUNT_IN_BEATS;
+        const countInRemaining = this.mode === 'countIn' && this.countInEndsAtMs !== null
+            ? Math.max(1, Math.ceil((this.countInEndsAtMs - performance.now()) / 1000))
+            : COUNT_IN_SECONDS;
         this.onViewChanged({
             mode: this.mode,
             offsetMs: this.offsetMs,

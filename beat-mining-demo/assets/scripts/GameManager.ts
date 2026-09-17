@@ -59,6 +59,7 @@ export class GameManager extends Component {
 
     update(): void {
         if (!this.initialized) return;
+        this.calibration.update(performance.now());
         this.updateMineableRock();
         this.ores = this.ores.filter((ore) => ore.isValid && ore.node.isValid);
         for (const ore of this.ores) {
@@ -103,13 +104,19 @@ export class GameManager extends Component {
         this.calibration = new CalibrationManager(
             (view) => this.ui.showCalibration(view),
             (offsetMs) => this.beat.setUserInputOffsetMilliseconds(offsetMs),
+            () => this.audio.playCalibrationBeep(),
+            (active) => active ? this.audio.beginCalibration() : this.audio.endCalibration(),
         );
 
         const uiNode = new Node('UI');
         uiNode.layer = this.node.layer;
         this.node.addChild(uiNode);
         this.ui = uiNode.addComponent(UIController);
-        this.ui.initialize(MINE_TRACK.bpm, (offsetMs) => this.calibration.setManualOffset(offsetMs));
+        this.ui.initialize(
+            MINE_TRACK.bpm,
+            (offsetMs) => this.calibration.setManualOffset(offsetMs),
+            () => this.calibration.startFromSettings(),
+        );
         this.calibration.initialize();
 
         const audioNode = new Node('AudioManager');
@@ -199,8 +206,7 @@ export class GameManager extends Component {
     private tryMine(): SwingPlan {
         if (this.completedSeconds !== null) return { accepted: false, impactHoldSeconds: 0, onImpact: () => undefined };
         if (this.calibration.isSampling) {
-            const measurement = this.beat.measureRawOffsetNow();
-            this.calibration.recordTap(measurement.targetBeatIndex, measurement.offsetSeconds);
+            this.calibration.recordTap(performance.now());
             return { accepted: false, impactHoldSeconds: 0, onImpact: () => undefined };
         }
         if (this.calibration.blocksGameplay) return { accepted: false, impactHoldSeconds: 0, onImpact: () => undefined };
@@ -267,10 +273,9 @@ export class GameManager extends Component {
         this.mineableRock?.setMineable(true);
     }
 
-    private onBeat(active: number, beatIndex: number): void {
+    private onBeat(active: number, _beatIndex: number): void {
         if (!this.ui || !this.calibration) return;
         this.ui.showBeat(active, this.perfectStreak);
-        this.calibration.onBeat(beatIndex);
     }
 
     private updateRhythmVisuals(): void {
