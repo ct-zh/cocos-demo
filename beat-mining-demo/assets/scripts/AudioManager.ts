@@ -11,6 +11,7 @@ export class AudioManager extends Component {
     private bgm: AudioClip | null = null;
     private sounds = new Map<SoundName, AudioClip>();
     private userInteracted = false;
+    private armed = false;
     private calibrationActive = false;
     private calibrationAudioContext: AudioContext | null = null;
     private onMusicStarted: (() => void) | null = null;
@@ -34,6 +35,8 @@ export class AudioManager extends Component {
         input.on(Input.EventType.KEY_DOWN, this.onFirstInput, this);
     }
 
+    armMusicInput(): void { this.armed = true; }
+
     get ready(): boolean { return this.bgm !== null && this.sounds.size === 5; }
     get musicPlaying(): boolean { return this.bgmSource?.playing ?? false; }
     get musicTime(): number { return this.bgmSource?.currentTime ?? 0; }
@@ -43,6 +46,7 @@ export class AudioManager extends Component {
     playPerfect(hotHand = false): void { this.play('perfect', hotHand ? 0.95 : 0.82); }
     playRockBreak(): void { this.play('rock_break', 0.72); }
     playCollect(): void { this.play('collect', 0.78); }
+    playPatternCue(accent: boolean): void { this.play('perfect', accent ? 0.34 : 0.22); }
 
     beginCalibration(): void {
         this.calibrationActive = true;
@@ -96,6 +100,7 @@ export class AudioManager extends Component {
     }
 
     private onFirstInput(_event: EventKeyboard): void {
+        if (!this.armed) return;
         this.userInteracted = true;
         this.tryStartMusic();
     }

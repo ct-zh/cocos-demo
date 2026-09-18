@@ -1,4 +1,4 @@
-import { _decorator, Color, Component, director, EventKeyboard, Graphics, input, Input, KeyCode, Node, profiler, tween, Vec3 } from 'cc';
+import { _decorator, Color, Component, director, EventKeyboard, Graphics, input, Input, KeyCode, Node, profiler, Tween, tween, Vec3 } from 'cc';
 import { BeatManager } from './BeatManager';
 import { BeatJudgement } from './BeatTypes';
 import { CalibrationManager } from './CalibrationManager';
@@ -9,6 +9,10 @@ import { OrePickup } from './OrePickup';
 import { fillRect, makeGraphicsNode, setPosition } from './PixelArt';
 import { AssistStep, MINING_POINT_OFFSET, Player, SwingPlan } from './Player';
 import { CompletionRating, CompletionSummary, UIController } from './UIController';
+import { GameModeId } from './modes/MiningGameMode';
+import { MiningGameMode } from './modes/MiningGameMode';
+import { ClassicMiningMode } from './modes/ClassicMiningMode';
+import { PatternReplayMode } from './modes/PatternReplayMode';
 const { ccclass } = _decorator;
 
 type DebugApi = { state: () => object; forceSwing: () => void; teleportToRock: () => void };
@@ -61,12 +65,20 @@ export class GameManager extends Component {
     private collectingOres = 0;
     private ignoredInputCount = 0;
     private initialized = false;
+    private calibrationInitialized = false;
+    private selectedMode: GameModeId | null = null;
+    private currentMode: MiningGameMode | null = null;
+    private modeSelectionVisible = true;
+
 
     start(): void {
         profiler.hideStats();
         this.buildScene();
         this.initialized = true;
         this.installDebugApi();
+        const mode = new URLSearchParams(window.location.search).get('mode');
+        if (mode === 'classic' || mode === 'pattern') this.selectMode(mode);
+        else this.showModeSelection();
         this.publishDebugState();
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
     }
@@ -74,21 +86,16 @@ export class GameManager extends Component {
     update(): void {
         if (!this.initialized) return;
         this.calibration.update(performance.now());
-        this.updateMineableRock();
+        this.currentMode?.update(0);
         this.ores = this.ores.filter((ore) => ore.isValid && ore.node.isValid);
         for (const ore of this.ores) {
-            if (Math.abs(ore.node.position.x - this.player.worldX) < 48) {
+            if (this.currentMode?.shouldAutoCollect(ore) || Math.abs(ore.node.position.x - this.player.worldX) < 48) {
                 this.ores = this.ores.filter((candidate) => candidate !== ore);
                 this.collectingOres++;
                 this.audio.playCollect();
                 ore.collect(() => {
                     this.collectingOres--;
-                    this.oreCount++;
-                    this.ui.setOre(this.oreCount);
-                    if (this.rocks.length === 0 && this.ores.length === 0 && this.collectingOres === 0 && this.completedSeconds === null) {
-                        this.completedSeconds = this.playSeconds;
-                        this.ui.showComplete(this.createCompletionSummary(this.completedSeconds));
-                    }
+                    this.currentMode?.onOreCollected();
                 });
             }
         }
@@ -131,8 +138,9 @@ export class GameManager extends Component {
             MINE_TRACK.bpm,
             (offsetMs) => this.calibration.setManualOffset(offsetMs),
             () => this.calibration.startFromSettings(),
+            (mode) => this.selectMode(mode),
+            () => this.returnToModeSelection(),
         );
-        this.calibration.initialize();
 
         const audioNode = new Node('AudioManager');
         this.node.addChild(audioNode);
@@ -148,19 +156,8 @@ export class GameManager extends Component {
             active: this.audio?.musicPlaying ?? false,
             beatPosition: this.beat.beatPosition,
             tapCycleBeats: MINE_TRACK.visualRhythm.playerTapCycleBeats,
-        }), () => !this.calibration.blocksGameplay);
+        }), () => this.playerControlState());
 
-        const rockPlan: RockPlan[] = [
-            { x: -350, kind: 'normal', hp: 3, drops: 1 },
-            { x: -165, kind: 'normal', hp: 4, drops: 1 },
-            { x: 25, kind: 'hard', hp: 5, drops: 1 },
-            { x: 205, kind: 'normal', hp: 4, drops: 1 },
-            { x: 365, kind: 'hard', hp: 6, drops: 2 },
-            { x: 515, kind: 'crystal', hp: 9, drops: 3 },
-        ];
-        this.totalRockCount = rockPlan.length;
-        this.ui.setProgress(0, this.totalRockCount, true);
-        rockPlan.forEach((plan) => this.spawnRock(plan));
     }
 
     private drawCave(): void {
@@ -186,28 +183,16 @@ export class GameManager extends Component {
         fillRect(g, new Color(109, 208, 211), 498, -276, 9, 26);
     }
 
-    private spawnRock(plan: RockPlan): void {
+    private spawnRock(plan: RockPlan, onModeBroken?: (rock: MiningRock, x: number) => void): MiningRock {
         const node = makeGraphicsNode('MiningRock', this.rhythmRoot, 100, 84);
         setPosition(node, plan.x, -204);
         const rock = node.addComponent(MiningRock);
         rock.initialize(plan, (brokenX) => {
-            if (this.mineableRock === rock) this.mineableRock = null;
             this.rocks = this.rocks.filter((candidate) => candidate !== rock);
-            this.brokenRockCount++;
-            this.ui.setProgress(this.brokenRockCount, this.totalRockCount, this.rocks.some((candidate) => candidate.rockKind === 'crystal'));
-            this.audio.playRockBreak();
-            for (let i = 0; i < plan.drops; i++) {
-                const offset = (i - (plan.drops - 1) / 2) * 25;
-                this.spawnOre(brokenX + offset, plan.kind === 'crystal');
-            }
-            if (plan.kind === 'crystal') {
-                this.finalCrystalBroken = true;
-                this.ui.showFinalBreak();
-                this.shake(14);
-                tween(this.world).to(0.06, { scale: new Vec3(1.035, 1.035, 1) }).to(0.2, { scale: Vec3.ONE }).start();
-            }
+            onModeBroken?.(rock, brokenX);
         });
         this.rocks.push(rock);
+        return rock;
     }
 
     private spawnOre(x: number, rich = false): void {
@@ -218,150 +203,43 @@ export class GameManager extends Component {
         this.ores.push(ore);
     }
 
-    private tryMine(): SwingPlan {
-        if (this.completedSeconds !== null) return rejectedSwing();
-        if (this.calibration.isSampling) {
-            this.calibration.recordTap(performance.now());
-            return rejectedSwing();
-        }
-        if (this.calibration.blocksGameplay) return rejectedSwing();
-
-        const preview = this.beat.previewNow();
-        if (preview.consumed) {
-            this.ignoredInputCount++;
-            this.impactPending = false;
-            this.lastJudgement = 'TooFast';
-            this.ui.showTooFast();
-            return rejectedSwing();
-        }
-
-        const { state, target } = this.resolveTargetState();
-        if (state !== 'inRange' && state !== 'assist') {
-            this.audio.playSwing();
-            this.impactPending = false;
-            this.lastJudgement = state === 'facingWrong' ? 'FacingWrong' : state === 'none' ? 'NoTarget' : 'TooFar';
-            this.ui.showSpatialHint(state, preview.offsetSeconds);
-            return rejectedSwing();
-        }
-        if (this.firstSwingAt === null) this.firstSwingAt = performance.now();
-        this.audio.playSwing();
-        this.beat.consumeBeatSlot(preview.targetBeatIndex);
-        const assistStep = state === 'assist' && target ? this.createAssistStep(target) : undefined;
-        const result = preview;
-        const judgement = result.judgement;
-
-        const hotHandBeforeHit = this.hotHand;
-        let enteredHotHand = false;
-        if (judgement === BeatJudgement.Miss) {
-            this.combo = 0;
-            this.perfectStreak = 0;
-            this.hotHand = false;
-            this.missCount++;
-        } else {
-            this.combo++;
-            this.maxCombo = Math.max(this.maxCombo, this.combo);
-            if (judgement === BeatJudgement.Perfect) {
-                this.perfectStreak++;
-                this.perfectCount++;
-                if (!this.hotHand && this.perfectStreak >= 3) {
-                    this.hotHand = true;
-                    enteredHotHand = true;
-                }
-            } else {
-                this.perfectStreak = 0;
-                this.hotHand = false;
-                this.goodCount++;
-            }
-        }
-        const damage = judgement === BeatJudgement.Perfect && hotHandBeforeHit ? 3 : result.damage;
-        const streakAtImpact = this.perfectStreak;
-        this.lastTimingMs = Math.round(result.offsetSeconds * 1000);
-        this.timingSampleCount++;
-        this.totalAbsTimingMs += Math.abs(result.offsetSeconds * 1000);
-        this.lastJudgement = judgement;
-        this.ui.showJudgement(judgement, this.combo, result.offsetSeconds, true);
-        this.ui.updateStats(this.perfectCount, this.goodCount, this.missCount, this.maxCombo, this.averageAbsTimingMs);
-        this.ui.setHotHand(this.hotHand);
-        if (enteredHotHand) this.ui.showHotHand();
-        if (judgement !== BeatJudgement.Miss) this.ui.fadeHelpAfterFirstValidHit();
-        this.impactPending = judgement !== BeatJudgement.Miss;
-        const impactHoldSeconds = judgement === BeatJudgement.Perfect ? 0.03 : judgement === BeatJudgement.Good ? 0.012 : 0;
+    private createModeHost() {
+        const manager = this;
         return {
-            accepted: true,
-            impactHoldSeconds,
-            assistStep,
-            onImpact: () => {
-                this.impactPending = false;
-                if (judgement === BeatJudgement.Miss || !target?.isValid || !target.node.isValid) return;
-                target.takeHit(damage, judgement, streakAtImpact, hotHandBeforeHit);
-                if (judgement === BeatJudgement.Perfect) this.audio.playPerfect(hotHandBeforeHit);
-                else this.audio.playGood();
-                this.shake(judgement === BeatJudgement.Perfect ? 8 : 3);
+            get player() { return manager.player; },
+            get beat() { return manager.beat; },
+            get audio() { return manager.audio; },
+            get ui() { return manager.ui; },
+            get calibration() { return manager.calibration; },
+            get rocks() { return manager.rocks; },
+            get ores() { return manager.ores; },
+            get collectingOres() { return manager.collectingOres; },
+            spawnRock: (config: RockPlan, onBroken: (rock: MiningRock, x: number) => void) => manager.spawnRock(config, onBroken),
+            spawnOre: (x: number, rich = false) => manager.spawnOre(x, rich),
+            clearEntities: () => {
+                manager.rocks.forEach((rock) => rock.node.destroy());
+                manager.ores.forEach((ore) => ore.node.destroy());
+                manager.rocks = [];
+                manager.ores = [];
+                manager.collectingOres = 0;
             },
+            setPlayerPosition: (x: number) => manager.player.node.setPosition(x, -205, 0),
+            shake: (amount: number) => manager.shake(amount),
+            complete: (summary: CompletionSummary) => { manager.completedSeconds = summary.seconds; manager.ui.showComplete(summary); },
+            resetUi: (mode: GameModeId) => { manager.completedSeconds = null; manager.ui.setOre(0); manager.ui.resetRound(mode); },
         };
     }
 
-    private resolveTargetState(): { state: MiningTargetState; target?: MiningRock } {
-        const rocks = this.rocks.filter((rock) => rock.isValid && rock.node.isValid);
-        if (rocks.length === 0) return { state: 'none' };
+    private tryMine(): SwingPlan { return this.currentMode?.handleMineInput() ?? rejectedSwing(); }
 
-        const facing = this.player.facingDirection;
-        const playerX = this.player.worldX;
-        const miningPointX = this.player.miningPointX;
-        const ahead = rocks
-            .filter((rock) => (rock.node.position.x - playerX) * facing >= 0)
-            .sort((a, b) => Math.abs(a.node.position.x - miningPointX) - Math.abs(b.node.position.x - miningPointX));
-        const nearestAhead = ahead[0];
-        if (nearestAhead) {
-            const distance = Math.abs(nearestAhead.node.position.x - miningPointX);
-            if (distance <= ATTACK_RANGE) return { state: 'inRange', target: nearestAhead };
-            if (distance <= ATTACK_RANGE + ASSIST_MARGIN) return { state: 'assist', target: nearestAhead };
-        }
-
-        const turnedMiningPointX = playerX - facing * MINING_POINT_OFFSET;
-        const behind = rocks
-            .filter((rock) => (rock.node.position.x - playerX) * facing < 0)
-            .sort((a, b) => Math.abs(a.node.position.x - turnedMiningPointX) - Math.abs(b.node.position.x - turnedMiningPointX));
-        const nearestBehind = behind[0];
-        if (nearestBehind && Math.abs(nearestBehind.node.position.x - turnedMiningPointX) <= ATTACK_RANGE + ASSIST_MARGIN) {
-            return { state: 'facingWrong', target: nearestBehind };
-        }
-        if (nearestAhead) return { state: 'tooFar', target: nearestAhead };
-        return { state: 'tooFar' };
-    }
-
-    private updateMineableRock(): void {
-        const { state, target } = this.resolveTargetState();
-        this.targetState = state;
-        const hint: MiningRangeHint = state === 'inRange' ? 'full' : state === 'assist' ? 'weak' : 'none';
-        const next = hint === 'none' ? null : target ?? null;
-        if (this.highlightedRock !== next && this.highlightedRock?.isValid && this.highlightedRock.node.isValid) {
-            this.highlightedRock.setRangeHint('none');
-        }
-        if (next && (this.highlightedRock !== next || this.highlightedRockHint !== hint)) next.setRangeHint(hint);
-        this.highlightedRock = next;
-        this.highlightedRockHint = hint;
-        this.mineableRock = hint === 'full' ? next : null;
-    }
-
-    private createAssistStep(target: MiningRock): AssistStep {
-        const targetX = target.node.position.x - this.player.facingDirection * (ATTACK_RANGE + MINING_POINT_OFFSET);
-        const distance = Math.abs(targetX - this.player.worldX);
-        const boundedDistance = Math.min(ASSIST_MAX_STEP, distance);
-        const durationSeconds = 0.06 + (boundedDistance / ASSIST_MAX_STEP) * 0.03;
-        return { targetX, durationSeconds };
-    }
-
-    private onBeat(_active: number, _beatIndex: number): void {
-        // The HUD is rendered from the continuous BeatManager clock in updateBeatPreview().
-    }
+    private onBeat(active: number, beatIndex: number): void { this.currentMode?.handleBeat(active, beatIndex); }
 
     private updateBeatPreview(): void {
         this.ui.updateBeatPreview(
             this.beat.beatPosition,
             MINE_TRACK.beatsPerBar,
             this.perfectStreak,
-            this.audio.musicPlaying && !this.calibration.blocksGameplay,
+            this.audio.musicPlaying && !this.calibration.blocksGameplay && this.selectedMode !== null,
         );
     }
 
@@ -393,6 +271,8 @@ export class GameManager extends Component {
     }
 
     private onKeyDown(event: EventKeyboard): void {
+        if (this.modeSelectionVisible && event.keyCode === KeyCode.DIGIT_1) { this.selectMode('classic'); return; }
+        if (this.modeSelectionVisible && event.keyCode === KeyCode.DIGIT_2) { this.selectMode('pattern'); return; }
         if (event.keyCode === KeyCode.KEY_C && this.calibration.toggleSettings()) return;
         if (event.keyCode === KeyCode.ENTER && this.calibration.confirm()) return;
         if (event.keyCode === KeyCode.ESCAPE && this.calibration.cancel()) return;
@@ -401,7 +281,7 @@ export class GameManager extends Component {
         if (event.keyCode === KeyCode.ARROW_LEFT && this.calibration.adjustOffset(-5)) return;
         if (event.keyCode === KeyCode.ARROW_RIGHT && this.calibration.adjustOffset(5)) return;
         if (event.keyCode === KeyCode.KEY_R && this.calibration.retry()) return;
-        if (event.keyCode === KeyCode.KEY_R && this.completedSeconds !== null) director.loadScene('Game');
+        if (event.keyCode === KeyCode.KEY_R && this.selectedMode !== null) this.restartCurrentMode();
     }
 
     private installDebugApi(): void {
@@ -416,8 +296,49 @@ export class GameManager extends Component {
         document.documentElement.dataset.beatMiningState = JSON.stringify(this.debugState());
     }
 
+    private showModeSelection(): void {
+        this.modeSelectionVisible = true;
+        this.ui.setMode(null);
+        this.ui.showModeSelection(true);
+        this.ui.showPatternMessage('选择玩法  ·  按 1 经典采矿  /  按 2 节奏复刻');
+    }
+
+    private selectMode(mode: GameModeId): void {
+        this.currentMode?.dispose();
+        this.selectedMode = mode;
+        this.modeSelectionVisible = false;
+        if (!this.calibrationInitialized) { this.calibration.initialize(); this.calibrationInitialized = true; }
+        this.audio.armMusicInput();
+        this.ui.showModeSelection(false);
+        this.ui.setMode(mode);
+        if (mode === 'classic') {
+            this.currentMode = new ClassicMiningMode(this.createModeHost());
+            this.ui.showPatternMessage('经典采矿  ·  在亮拍时挥镐');
+        } else {
+            this.currentMode = new PatternReplayMode(this.createModeHost());
+        }
+        this.currentMode.start();
+    }
+
+    private playerControlState(): { canMove: boolean; canMine: boolean } {
+        if (this.calibration.blocksGameplay || !this.currentMode) return { canMove: false, canMine: false };
+        return this.currentMode.controlState();
+    }
+
+    private restartCurrentMode(): void { this.currentMode?.restart(); }
+
+    private returnToModeSelection(): void {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('mode');
+        window.history.replaceState({}, '', url);
+        director.loadScene('Game');
+    }
+
     private debugState(): object {
         return {
+            selectedMode: this.selectedMode,
+            modeSelectionVisible: this.modeSelectionVisible,
+            modeState: this.currentMode?.debugState() ?? {},
             combo: this.combo,
             perfectStreak: this.perfectStreak,
             hotHand: this.hotHand,

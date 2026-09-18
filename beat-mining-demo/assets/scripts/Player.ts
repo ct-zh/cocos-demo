@@ -12,7 +12,7 @@ export class Player extends Component {
     private swinging = false;
     private requestMine: (() => SwingPlan) | null = null;
     private rhythmClock: (() => PlayerRhythmState) | null = null;
-    private canControl: (() => boolean) | null = null;
+    private controlState: (() => PlayerControlState) | null = null;
     private bodyNode!: Node;
     private body!: Graphics;
     private leftLeg!: Node;
@@ -25,17 +25,17 @@ export class Player extends Component {
     private velocityX = 0;
     private assistActive = false;
 
-    initialize(requestMine: () => SwingPlan, rhythmClock: () => PlayerRhythmState, canControl: () => boolean): void {
+    initialize(requestMine: () => SwingPlan, rhythmClock: () => PlayerRhythmState, controlState: () => PlayerControlState): void {
         this.requestMine = requestMine;
         this.rhythmClock = rhythmClock;
-        this.canControl = canControl;
+        this.controlState = controlState;
         this.draw();
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         input.on(Input.EventType.KEY_UP, this.onKeyUp, this);
     }
 
     update(dt: number): void {
-        const direction = this.canControl?.() === false ? 0 : (this.rightDown ? 1 : 0) - (this.leftDown ? 1 : 0);
+        const direction = this.controlState?.().canMove === false ? 0 : (this.rightDown ? 1 : 0) - (this.leftDown ? 1 : 0);
         if (direction !== 0) {
             this.facing = direction;
             this.updateFacingVisual();
@@ -94,11 +94,13 @@ export class Player extends Component {
     }
 
     private onKeyDown(event: EventKeyboard): void {
-        if (event.keyCode === KeyCode.SPACE && this.canControl?.() === false) {
-            this.requestMine?.();
+        const control = this.controlState?.() ?? { canMove: true, canMine: true };
+        if (event.keyCode === KeyCode.SPACE) {
+            if (control.canMine) this.swing();
+            else this.requestMine?.();
             return;
         }
-        if (this.canControl?.() === false) return;
+        if (!control.canMove) return;
         if ((event.keyCode === KeyCode.KEY_A || event.keyCode === KeyCode.ARROW_LEFT) && !this.leftDown) {
             this.leftDown = true;
             this.velocityX = Math.min(this.velocityX, -this.initialMoveSpeed);
@@ -107,7 +109,6 @@ export class Player extends Component {
             this.rightDown = true;
             this.velocityX = Math.max(this.velocityX, this.initialMoveSpeed);
         }
-        if (event.keyCode === KeyCode.SPACE) this.swing();
     }
 
     private onKeyUp(event: EventKeyboard): void {
@@ -179,6 +180,11 @@ export class Player extends Component {
         this.bodyNode.setPosition(0, Math.abs(wave) * 1.5);
     }
 
+}
+
+export interface PlayerControlState {
+    canMove: boolean;
+    canMine: boolean;
 }
 
 export interface PlayerRhythmState {

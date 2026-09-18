@@ -17,6 +17,8 @@ export interface CompletionSummary {
     accuracyPercent: number;
     rating: CompletionRating;
     nextGoal: string;
+    successfulPatterns?: number;
+    failedPatterns?: number;
 }
 
 @ccclass('UIController')
@@ -32,6 +34,10 @@ export class UIController extends Component {
     private completionRating!: Label;
     private completionGoal!: Label;
     private hotHandNotice!: Label;
+    private modeLabel!: Label;
+    private patternPhase!: Label;
+    private patternSlots!: Label;
+    private patternAttempts!: Label;
     private helpOpacity!: UIOpacity;
     private beatDots: Label[] = [];
     private calibrationOverlay!: Node;
@@ -42,7 +48,11 @@ export class UIController extends Component {
     private calibrationSliderNode!: Node;
     private calibrationSlider!: Slider;
     private calibrationStartButton!: Node;
+    private returnModeButton!: Node;
     private calibrationOffsetChanged: ((offsetMs: number) => void) | null = null;
+    private modeSelected: ((mode: 'classic' | 'pattern') => void) | null = null;
+    private returnModeRequested: (() => void) | null = null;
+    private modeSelection!: Node;
     private calibrationStartRequested: (() => void) | null = null;
     private syncingCalibrationSlider = false;
     private timingVisibilityVersion = 0;
@@ -52,9 +62,11 @@ export class UIController extends Component {
     private readonly comboDefaultColor = new Color(255, 178, 84);
     private readonly hotHandComboColor = new Color(255, 114, 76);
 
-    initialize(bpm: number, onCalibrationOffsetChanged: (offsetMs: number) => void, onCalibrationStartRequested: () => void): void {
+    initialize(bpm: number, onCalibrationOffsetChanged: (offsetMs: number) => void, onCalibrationStartRequested: () => void, onModeSelected: (mode: 'classic' | 'pattern') => void, onReturnModeRequested: () => void): void {
         this.calibrationOffsetChanged = onCalibrationOffsetChanged;
         this.calibrationStartRequested = onCalibrationStartRequested;
+        this.modeSelected = onModeSelected;
+        this.returnModeRequested = onReturnModeRequested;
         this.makeLabel('Title', 'BEAT MINER', 0, 310, 30, new Color(247, 209, 88));
         this.help = this.makeLabel('Help', `A / D 或 ← / → 移动    SPACE 挥镐    BPM ${bpm}`, 0, -325, 20, new Color(174, 183, 204));
         this.helpOpacity = this.help.node.addComponent(UIOpacity);
@@ -68,13 +80,24 @@ export class UIController extends Component {
         this.completionRating = this.makeLabel('CompletionRating', '', 0, 120, 48, new Color(255, 221, 92));
         this.completionGoal = this.makeLabel('CompletionGoal', '', 0, -250, 18, new Color(174, 238, 229));
         this.hotHandNotice = this.makeLabel('HotHandNotice', '', 0, 145, 18, this.hotHandComboColor);
+        this.modeLabel = this.makeLabel('ModeLabel', '', 0, 335, 16, new Color(174, 238, 229));
+        this.patternPhase = this.makeLabel('PatternPhase', '', 0, 116, 25, new Color(255, 221, 92));
+        this.patternSlots = this.makeLabel('PatternSlots', '', 0, 70, 31, new Color(210, 217, 235));
+        this.patternAttempts = this.makeLabel('PatternAttempts', '', 0, 38, 16, new Color(143, 151, 179));
         this.offset.node.active = false;
         this.stats.node.active = false;
         this.completionRating.node.active = false;
         this.completionGoal.node.active = false;
         this.hotHandNotice.node.active = false;
+        this.modeLabel.node.active = false;
+        this.patternPhase.node.active = false;
+        this.patternSlots.node.active = false;
+        this.patternAttempts.node.active = false;
         for (let i = 0; i < 4; i++) this.beatDots.push(this.makeLabel(`Beat${i + 1}`, '■', -72 + i * 48, 260, 30, new Color(75, 74, 98)));
         this.buildCalibrationOverlay();
+        this.buildModeSelection();
+        this.returnModeButton = this.buildReturnModeButton();
+        this.returnModeButton.active = false;
     }
 
     updateBeatPreview(beatPosition: number, beatsPerBar: number, perfectStreak: number, active: boolean): void {
@@ -200,6 +223,36 @@ export class UIController extends Component {
         }, 0.7);
     }
 
+    showModeSelection(show: boolean): void { this.modeSelection.active = show; }
+
+    setMode(mode: 'classic' | 'pattern' | null): void {
+        this.modeLabel.node.active = mode !== null;
+        this.modeLabel.string = mode === 'pattern' ? '节奏复刻' : mode === 'classic' ? '经典采矿' : '';
+        const active = mode === 'pattern';
+        this.patternPhase.node.active = active;
+        this.patternSlots.node.active = active;
+        this.patternAttempts.node.active = active;
+    }
+
+    showPattern(phase: string, pattern: boolean[], results: string[], attempt: number, rockIndex: number, currentSlot = -1): void {
+        this.patternPhase.string = phase + '  ·  矿石 ' + (rockIndex + 1) + ' / 3';
+        const slot = (value: boolean, result: string, index: number) => {
+            if (index === currentSlot) return value ? '▶' : '▷';
+            if (result === 'perfect') return '◆';
+            if (result === 'good') return '◇';
+            if (result === 'miss' || result === 'wrongRest') return '×';
+            if (!value) return '—';
+            return '□';
+        };
+        this.patternSlots.string = pattern.map((value, index) => slot(value, results[index] ?? 'pending', index)).join('   ');
+        this.patternAttempts.string = '第 ' + attempt + ' 次尝试';
+    }
+
+    showPatternMessage(message: string): void {
+        this.feedback.string = message;
+        this.feedback.color = new Color(255, 221, 92);
+    }
+
     setProgress(broken: number, total: number, crystalRemaining: boolean): void {
         this.progress.string = broken === total - 1 && crystalRemaining ? `矿脉 ${broken} / ${total}  ·  最终水晶` : `矿脉 ${broken} / ${total}`;
     }
@@ -224,11 +277,26 @@ export class UIController extends Component {
         this.completionRating.string = `${summary.rating} 评级`;
         this.completionRating.color = this.ratingColor(summary.rating);
         this.completionRating.node.active = true;
-        this.completionGoal.string = `下一局目标：${summary.nextGoal}`;
+        const patternResult = summary.successfulPatterns === undefined ? '' : `  ·  复刻成功 ${summary.successfulPatterns} / 失败 ${summary.failedPatterns ?? 0}`;
+        this.completionGoal.string = `下一局目标：${summary.nextGoal}${patternResult}`;
         this.completionGoal.node.active = true;
         this.progress.string = '单关完成';
         this.help.string = '按 R 重新试玩';
         this.showHelp();
+        this.returnModeButton.active = true;
+    }
+
+    resetRound(mode: 'classic' | 'pattern'): void {
+        this.feedback.string = mode === 'pattern' ? '等待音乐…' : '等待节拍…';
+        this.timingVisibilityVersion++;
+        this.timing.node.active = true;
+        this.timing.string = mode === 'pattern' ? '先听节奏，再复刻' : '在亮拍时挥镐';
+        this.stats.node.active = false;
+        this.completionRating.node.active = false;
+        this.completionGoal.node.active = false;
+        this.hotHandNotice.node.active = false;
+        this.returnModeButton.active = false;
+        this.setHotHand(false);
     }
 
     setOre(count: number): void {
@@ -281,6 +349,44 @@ export class UIController extends Component {
             this.calibrationHint.string = '拖动滑块或 ←/→ 微调    T 开始校准    0 重置    C/ESC 关闭';
             this.showHelp();
         }
+    }
+
+    private buildModeSelection(): void {
+        this.modeSelection = new Node('ModeSelection');
+        this.modeSelection.layer = this.node.layer;
+        this.node.addChild(this.modeSelection);
+        this.modeSelection.addComponent(UITransform).setContentSize(1280, 720);
+        const shade = makeGraphicsNode('ModeShade', this.modeSelection, 1280, 720);
+        fillRect(shade.getComponent(Graphics)!, new Color(4, 5, 12, 220), -640, -360, 1280, 720);
+        this.makeLabel('ModeTitle', '选择玩法', 0, 145, 36, new Color(255, 221, 92), this.modeSelection);
+        this.buildModeButton('ClassicMode', '经典采矿', '自由移动，在拍点挥镐，清空六块矿脉', 95, 'classic');
+        this.buildModeButton('PatternMode', '节奏复刻', '先听四拍节奏，再用空格复刻，共三块矿石', -80, 'pattern');
+    }
+
+    private buildReturnModeButton(): Node {
+        const button = makeGraphicsNode('ReturnModeSelection', this.node, 280, 38);
+        button.setPosition(0, -210);
+        const g = button.getComponent(Graphics)!;
+        fillRect(g, new Color(92, 230, 222), -140, -19, 280, 38);
+        fillRect(g, new Color(24, 25, 43), -136, -15, 272, 30);
+        this.makeLabel('Label', '返回模式选择', 0, 0, 17, new Color(255, 221, 92), button);
+        button.addComponent(Button);
+        const returnToSelection = () => this.returnModeRequested?.();
+        button.on(Node.EventType.TOUCH_END, returnToSelection, this);
+        return button;
+    }
+
+    private buildModeButton(name: string, title: string, detail: string, y: number, mode: 'classic' | 'pattern'): void {
+        const button = makeGraphicsNode(name, this.modeSelection, 700, 110);
+        button.setPosition(0, y);
+        const g = button.getComponent(Graphics)!;
+        fillRect(g, new Color(92, 230, 222), -350, -55, 700, 110);
+        fillRect(g, new Color(24, 25, 43), -346, -51, 692, 102);
+        this.makeLabel(name + 'Title', title, 0, 17, 26, new Color(255, 221, 92), button);
+        this.makeLabel(name + 'Detail', detail, 0, -22, 16, new Color(174, 183, 204), button);
+        button.addComponent(Button);
+        const select = () => this.modeSelected?.(mode);
+        button.on(Node.EventType.TOUCH_END, select, this);
     }
 
     private buildCalibrationOverlay(): void {
