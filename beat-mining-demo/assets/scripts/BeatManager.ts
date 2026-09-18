@@ -1,5 +1,5 @@
 import { _decorator, Component } from 'cc';
-import { BeatJudgement, BeatResult } from './BeatTypes';
+import { BeatJudgement, BeatResult, BeatSlotPreview } from './BeatTypes';
 import { MusicTrackConfig } from './MusicTrackConfig';
 const { ccclass } = _decorator;
 
@@ -51,17 +51,32 @@ export class BeatManager extends Component {
     }
 
     judgeNow(): BeatResult {
-        const judgedTime = this.elapsed() - this.effectiveInputOffsetSeconds;
-        const targetBeatIndex = Math.round(judgedTime / this.beatDuration);
-        const offset = judgedTime - targetBeatIndex * this.beatDuration;
-        const distance = Math.abs(offset);
+        const preview = this.peekNow();
+        const { targetBeatIndex, judgement, damage, distanceSeconds: distance, offsetSeconds: offset } = preview;
         if (targetBeatIndex === this.lastAttemptedBeatIndex) {
             return { accepted: false, targetBeatIndex, judgement: BeatJudgement.Miss, damage: 0, distanceSeconds: distance, offsetSeconds: offset };
         }
         this.lastAttemptedBeatIndex = targetBeatIndex;
-        if (distance <= this.perfectWindowSeconds) return { accepted: true, targetBeatIndex, judgement: BeatJudgement.Perfect, damage: 2, distanceSeconds: distance, offsetSeconds: offset };
-        if (distance <= this.goodWindowSeconds) return { accepted: true, targetBeatIndex, judgement: BeatJudgement.Good, damage: 1, distanceSeconds: distance, offsetSeconds: offset };
-        return { accepted: true, targetBeatIndex, judgement: BeatJudgement.Miss, damage: 0, distanceSeconds: distance, offsetSeconds: offset };
+        return { accepted: true, targetBeatIndex, judgement, damage, distanceSeconds: distance, offsetSeconds: offset };
+    }
+
+    previewNow(): BeatSlotPreview {
+        return this.peekNow();
+    }
+
+    consumeBeatSlot(targetBeatIndex: number): void {
+        this.lastAttemptedBeatIndex = targetBeatIndex;
+    }
+
+    private peekNow(): BeatSlotPreview {
+        const judgedTime = this.elapsed() - this.effectiveInputOffsetSeconds;
+        const targetBeatIndex = Math.round(judgedTime / this.beatDuration);
+        const offset = judgedTime - targetBeatIndex * this.beatDuration;
+        const distance = Math.abs(offset);
+        const consumed = targetBeatIndex === this.lastAttemptedBeatIndex;
+        if (distance <= this.perfectWindowSeconds) return { targetBeatIndex, consumed, judgement: BeatJudgement.Perfect, damage: 2, distanceSeconds: distance, offsetSeconds: offset };
+        if (distance <= this.goodWindowSeconds) return { targetBeatIndex, consumed, judgement: BeatJudgement.Good, damage: 1, distanceSeconds: distance, offsetSeconds: offset };
+        return { targetBeatIndex, consumed, judgement: BeatJudgement.Miss, damage: 0, distanceSeconds: distance, offsetSeconds: offset };
     }
 
     get beatDuration(): number { return 60 / this.bpm; }

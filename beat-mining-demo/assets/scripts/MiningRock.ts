@@ -4,6 +4,7 @@ import { fillRect, makeGraphicsNode } from './PixelArt';
 const { ccclass } = _decorator;
 
 export type RockKind = 'normal' | 'hard' | 'crystal';
+export type MiningRangeHint = 'none' | 'weak' | 'full';
 
 export interface MiningRockConfig {
     kind: RockKind;
@@ -18,7 +19,7 @@ export class MiningRock extends Component {
     private kind: RockKind = 'normal';
     private graphics!: Graphics;
     private brokenCallback: ((x: number) => void) | null = null;
-    private mineable = false;
+    private rangeHint: MiningRangeHint = 'none';
 
     initialize(config: MiningRockConfig, onBroken: (x: number) => void): void {
         this.kind = config.kind;
@@ -32,7 +33,7 @@ export class MiningRock extends Component {
     get remainingHp(): number { return this.hp; }
     get rockKind(): RockKind { return this.kind; }
 
-    takeHit(damage: number, judgement: BeatJudgement, perfectStreak: number): void {
+    takeHit(damage: number, judgement: BeatJudgement, perfectStreak: number, hotHand = false): void {
         this.hp = Math.max(0, this.hp - damage);
         this.redraw(judgement === BeatJudgement.Perfect);
         if (judgement === BeatJudgement.Perfect) {
@@ -40,9 +41,12 @@ export class MiningRock extends Component {
                 if (this.isValid && this.node.isValid) this.redraw(false);
             }, 0.1);
         }
-        this.spawnDebris(judgement === BeatJudgement.Perfect, perfectStreak);
+        const hotPerfect = hotHand && judgement === BeatJudgement.Perfect;
+        this.spawnDebris(judgement === BeatJudgement.Perfect, perfectStreak, hotPerfect);
         const crystalBoost = this.kind === 'crystal' ? 0.08 : 0;
-        const strength = judgement === BeatJudgement.Perfect ? 1.15 + crystalBoost + Math.min(perfectStreak, 5) * 0.04 : 1.08 + crystalBoost;
+        const strength = judgement === BeatJudgement.Perfect
+            ? 1.15 + crystalBoost + Math.min(perfectStreak, 5) * 0.04 + (hotPerfect ? 0.07 : 0)
+            : 1.08 + crystalBoost;
         tween(this.node).to(0.06, { scale: new Vec3(strength, 0.9, 1) }).to(0.08, { scale: Vec3.ONE }).start();
         if (this.hp <= 0) {
             const x = this.node.position.x;
@@ -54,25 +58,25 @@ export class MiningRock extends Component {
         }
     }
 
-    setMineable(value: boolean): void {
-        if (this.mineable === value) return;
-        this.mineable = value;
+    setRangeHint(value: MiningRangeHint): void {
+        if (this.rangeHint === value) return;
+        this.rangeHint = value;
         if (!this.graphics || !this.graphics.isValid || !this.node.isValid) return;
         this.redraw(false);
-        if (value) tween(this.node).to(0.06, { scale: new Vec3(1.04, 1.04, 1) }).to(0.08, { scale: Vec3.ONE }).start();
+        if (value === 'full') tween(this.node).to(0.06, { scale: new Vec3(1.04, 1.04, 1) }).to(0.08, { scale: Vec3.ONE }).start();
     }
 
-    private spawnDebris(perfect: boolean, perfectStreak: number): void {
+    private spawnDebris(perfect: boolean, perfectStreak: number, hotPerfect: boolean): void {
         const parent = this.node.parent;
         if (!parent) return;
         const kindBonus = this.kind === 'crystal' ? 4 : this.kind === 'hard' ? 1 : 0;
-        const count = (perfect ? 4 + Math.min(perfectStreak, 4) : 2) + kindBonus;
+        const count = (perfect ? 4 + Math.min(perfectStreak, 4) : 2) + kindBonus + (hotPerfect ? 2 : 0);
         for (let i = 0; i < count; i++) {
             const chip = makeGraphicsNode('RockChip', parent, 8, 8);
             chip.setPosition(this.node.position);
             const g = chip.getComponent(Graphics)!;
             const normalChip = this.kind === 'hard' ? new Color(200, 145, 89) : this.kind === 'crystal' ? new Color(112, 235, 255) : new Color(92, 178, 188);
-            fillRect(g, perfect ? new Color(255, 238, 128) : normalChip, -4, -4, 8, 8);
+            fillRect(g, hotPerfect ? new Color(255, 166, 84) : perfect ? new Color(255, 238, 128) : normalChip, -4, -4, 8, 8);
             const direction = i % 2 === 0 ? -1 : 1;
             const spread = 18 + (i % 3) * 11;
             tween(chip)
@@ -89,8 +93,8 @@ export class MiningRock extends Component {
     private redraw(perfect: boolean): void {
         const g = this.graphics;
         g.clear();
-        if (this.mineable) {
-            const edge = new Color(113, 238, 224);
+        if (this.rangeHint !== 'none') {
+            const edge = this.rangeHint === 'full' ? new Color(113, 238, 224) : new Color(55, 124, 125);
             fillRect(g, edge, -50, -42, 100, 4);
             fillRect(g, edge, -50, 38, 100, 4);
             fillRect(g, edge, -50, -42, 4, 84);

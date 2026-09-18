@@ -40,7 +40,7 @@ export class AudioManager extends Component {
 
     playSwing(): void { this.play('swing', 0.55); }
     playGood(): void { this.play('good', 0.65); }
-    playPerfect(): void { this.play('perfect', 0.82); }
+    playPerfect(hotHand = false): void { this.play('perfect', hotHand ? 0.95 : 0.82); }
     playRockBreak(): void { this.play('rock_break', 0.72); }
     playCollect(): void { this.play('collect', 0.78); }
 

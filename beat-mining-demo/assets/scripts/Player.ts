@@ -1,6 +1,8 @@
-import { _decorator, Color, Component, EventKeyboard, Graphics, input, Input, KeyCode, Node, tween, Vec3 } from 'cc';
+import { _decorator, Color, Component, EventKeyboard, Graphics, input, Input, KeyCode, Node, Tween, tween, Vec3 } from 'cc';
 import { fillRect, makeGraphicsNode } from './PixelArt';
 const { ccclass } = _decorator;
+
+export const MINING_POINT_OFFSET = 72;
 
 @ccclass('Player')
 export class Player extends Component {
@@ -21,6 +23,7 @@ export class Player extends Component {
     private readonly deceleration = 3200;
     private readonly initialMoveSpeed = 120;
     private velocityX = 0;
+    private assistActive = false;
 
     initialize(requestMine: () => SwingPlan, rhythmClock: () => PlayerRhythmState, canControl: () => boolean): void {
         this.requestMine = requestMine;
@@ -40,30 +43,36 @@ export class Player extends Component {
         const targetVelocity = direction * this.speed;
         const changeRate = direction === 0 ? this.deceleration : this.acceleration;
         this.velocityX = this.moveToward(this.velocityX, targetVelocity, changeRate * dt);
-        const nextX = Math.max(-540, Math.min(540, this.node.position.x + this.velocityX * dt));
-        if (nextX === -540 || nextX === 540) this.velocityX = 0;
-        this.node.setPosition(nextX, this.node.position.y, 0);
+        if (!this.assistActive) {
+            const nextX = Math.max(-540, Math.min(540, this.node.position.x + this.velocityX * dt));
+            if (nextX === -540 || nextX === 540) this.velocityX = 0;
+            this.node.setPosition(nextX, this.node.position.y, 0);
+        }
         this.updateRhythmVisuals();
     }
 
-    get miningPointX(): number { return this.node.position.x + this.facing * 72; }
+    get miningPointX(): number { return this.node.position.x + this.facing * MINING_POINT_OFFSET; }
     get worldX(): number { return this.node.position.x; }
+    get facingDirection(): 1 | -1 { return this.facing >= 0 ? 1 : -1; }
+    get isAssisting(): boolean { return this.assistActive; }
     get leftLegLift(): number { return this.leftLeg.position.y + 43; }
     get rightLegLift(): number { return this.rightLeg.position.y + 43; }
 
     swing(): void {
         const plan = this.requestMine?.() ?? { accepted: false, impactHoldSeconds: 0, onImpact: () => undefined };
         if (this.swinging) return;
-        this.swinging = true;
         this.updateFacingVisual();
         if (!plan.accepted) {
+            Tween.stopAllByTarget(this.pickaxe);
             tween(this.pickaxe)
                 .to(0.04, { angle: -8 * this.facing })
                 .to(0.07, { angle: 0 })
-                .call(() => { this.swinging = false; })
                 .start();
             return;
         }
+        this.swinging = true;
+        Tween.stopAllByTarget(this.pickaxe);
+        if (plan.assistStep) this.startAssist(plan.assistStep);
         tween(this.node)
             .to(0.04, { scale: new Vec3(0.96, 1.04, 1) })
             .to(0.08, { scale: new Vec3(1.03, 0.97, 1) })
@@ -114,6 +123,15 @@ export class Player extends Component {
     private moveToward(current: number, target: number, maxDelta: number): number {
         if (Math.abs(target - current) <= maxDelta) return target;
         return current + Math.sign(target - current) * maxDelta;
+    }
+
+    private startAssist(step: AssistStep): void {
+        const targetX = Math.max(-540, Math.min(540, step.targetX));
+        this.assistActive = true;
+        tween(this.node)
+            .to(step.durationSeconds, { position: new Vec3(targetX, this.node.position.y, this.node.position.z) })
+            .call(() => { this.assistActive = false; })
+            .start();
     }
 
     private draw(): void {
@@ -173,4 +191,10 @@ export interface SwingPlan {
     accepted: boolean;
     impactHoldSeconds: number;
     onImpact: () => void;
+    assistStep?: AssistStep;
+}
+
+export interface AssistStep {
+    targetX: number;
+    durationSeconds: number;
 }

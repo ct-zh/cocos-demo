@@ -12,3 +12,12 @@ export interface BeatResult {
     distanceSeconds: number;
     offsetSeconds: number;
 }
+
+export interface BeatSlotPreview {
+    targetBeatIndex: number;
+    consumed: boolean;
+    judgement: BeatJudgement;
+    damage: number;
+    distanceSeconds: number;
+    offsetSeconds: number;
+}
